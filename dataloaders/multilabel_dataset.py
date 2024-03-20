@@ -20,4 +20,7 @@ class MultilabelDataset(torch.utils.data.Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return image, labels
+        sample = {}
+        sample['image'] = image
+        sample['labels'] = labels
+        return sample
