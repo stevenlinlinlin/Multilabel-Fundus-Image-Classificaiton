@@ -1,4 +1,5 @@
 from torch import nn
+import torch.nn.functional as F
 
 class TransformerEncoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1):

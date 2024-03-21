@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import torch
 
-from utils import get_unk_mask_indices, image_loader
+from dataloaders.utils import image_loader, get_unk_mask_indices
 
 
 class CTranDataset(torch.utils.data.Dataset):

@@ -2,8 +2,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from utils import positionalencoding2d, weights_init, custom_replace
-from transformerencoder import SelfAttnLayer
+from models.utils import positionalencoding2d, weights_init, custom_replace
+from models.transformerencoder import SelfAttnLayer
+from models.backbone import DenseNetBackbone
 
 class CTranModel(nn.Module):
     def __init__(self,num_labels,use_lmt,pos_emb=False,layers=3,heads=4,dropout=0.1):
