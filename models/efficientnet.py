@@ -16,3 +16,19 @@ class EfficientNetB3(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+    
+class EfficientNetB5(nn.Module):
+    def __init__(self, num_classes):
+        super(EfficientNetB5, self).__init__()
+        efficientnetb5 = models.efficientnet_b5(weights='DEFAULT')
+        # efficientnetb3.classifier.in_features # 2048
+        efficientnetb5.classifier = nn.Sequential(
+            nn.Dropout(0.2),
+            nn.Linear(2048, 512),
+            nn.ReLU(),
+            nn.Linear(512, num_classes),
+        )
+        self.model = efficientnetb5
+
+    def forward(self, x):
+        return self.model(x)
