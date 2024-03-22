@@ -15,7 +15,6 @@ import copy
 
 # Custom imports
 from dataloaders.multilabel_dataset import MultilabelDataset
-from dataloaders.ctran_dataset import CTranDataset
 from models.resnet import ResNet50
 from models.densenet import DenseNet169
 from models.mobilenet import MobileNetV2
@@ -32,7 +31,7 @@ num_workers = 28
 batch_size = 16
 num_classes = 28
 selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
-ctran_model = False # True for CTran, False for CNN
+ctran_model = True # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
 
 # Data transforms
@@ -56,43 +55,36 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
+
 # datasets
 def get_dataset():
     # train dataset
     ## Original dataset
-    # train_dataset = MultilabelDataset(csv_file='data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv',
-    #                               root_dir='data/fundus/RFMiD/Training_Set/Training',
-    #                               transform=transform)
-    # train_dataset = CTranDataset(ann_dir='data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv',
+    # train_dataset = MultilabelDataset(ann_dir='data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv',
     #                               root_dir='data/fundus/RFMiD/Training_Set/Training',
     #                               transform=transform, known_labels=1, testing=False)
 
     ## Data augmentation
-    train_dataset = MultilabelDataset(csv_file='data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv',
+    train_dataset = MultilabelDataset(ann_dir='data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv',
                                 root_dir='data/fundus/RFMiD/Training_Set/Training',
-                                transform=transform)
-    # train_dataset = CTranDataset(ann_dir='data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv',
-    #                               root_dir='data/fundus/RFMiD/Training_Set/Training',
-    #                               transform=transform, known_labels=1, testing=False)
+                                transform=transform, known_labels=1, testing=False)
 
     # val dataset
-    test_dataset = MultilabelDataset(csv_file='data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv',
+    test_dataset = MultilabelDataset(ann_dir='data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv',
                                 root_dir='data/fundus/RFMiD/Evaluation_Set/Validation',
-                                transform=transform)
-    # test_dataset = CTranDataset(ann_dir='data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv',
-    #                               root_dir='data/fundus/RFMiD/Evaluation_Set/Validation',
-    #                               transform=transform, known_labels=0, testing=True)
+                                transform=transform, known_labels=0, testing=True)
+
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     return train_dataset, test_dataset, test_loader
 
 # Models
 def get_model():
     # model = ResNet50(num_classes).to(device)
-    model = DenseNet169(num_classes).to(device)
+    # model = DenseNet169(num_classes).to(device)
     # model = MobileNetV2(num_classes).to(device)
     # model = EfficientNetB5(num_classes).to(device)
     # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
-    # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
+    model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
     return model
 
 
