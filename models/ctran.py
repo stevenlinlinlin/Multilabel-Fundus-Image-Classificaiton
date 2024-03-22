@@ -13,7 +13,7 @@ class CTranModel(nn.Module):
 
         # image feature backbone
         self.backbone = DenseNetBackbone()
-        hidden = 1664 # this should match the backbone output feature size
+        hidden = 2208 # this should match the backbone output feature size
 
         self.downsample = False
         if self.downsample:

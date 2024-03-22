@@ -35,8 +35,9 @@ class ResNetBackbone(nn.Module):
 class DenseNetBackbone(nn.Module):
     def __init__(self):
         super(DenseNetBackbone, self).__init__()
-        embedding_dim = 1664
-        self.base_network = models.densenet169(weights='DEFAULT').features
+        embedding_dim = 2208
+        # embedding_dim = 1664
+        self.base_network = models.densenet161(weights='DEFAULT').features
 
     def forward(self,images):
         x = self.base_network(images)

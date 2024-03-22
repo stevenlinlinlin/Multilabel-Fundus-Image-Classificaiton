@@ -6,13 +6,13 @@ from dataloaders.utils import image_loader, get_unk_mask_indices
 
 
 class MultilabelDataset(torch.utils.data.Dataset):
-    def __init__(self, ann_dir,root_dir,transform=None,known_labels=0, testing=False):
+    def __init__(self, ann_dir,root_dir, num_labels, transform=None,known_labels=0, testing=False):
         # Load training data.
         self.ann_dir = pd.read_csv(ann_dir)
         self.root_dir = root_dir
         self.transform = transform
 
-        self.num_labels = 28
+        self.num_labels = num_labels
         self.known_labels = known_labels
         self.testing = testing
 
@@ -21,11 +21,13 @@ class MultilabelDataset(torch.utils.data.Dataset):
         # img_path = sample['file_path']
         # image_id = sample['image_id']
 
-        img_path = os.path.join(self.root_dir, str(self.ann_dir.iloc[index, 0])+".png")
+        # img_path = os.path.join(self.root_dir, str(self.ann_dir.iloc[index, 0])+".png")
+        base_path = os.path.join(self.root_dir, str(self.ann_dir.iloc[index, 0]))
+        img_path = base_path + ".png" if os.path.exists(base_path + ".png") else base_path + ".tif"
 
         image = image_loader(img_path,self.transform)
         
-        labels = torch.tensor(self.ann_dir.iloc[index, 1:].values, dtype=torch.float32)
+        labels = torch.tensor(self.ann_dir.iloc[index, 1:].astype(float).values, dtype=torch.float32)
 
         mask = labels.clone()
         unk_mask_indices = get_unk_mask_indices(image,self.testing,self.num_labels,self.known_labels)

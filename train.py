@@ -29,7 +29,8 @@ print(torch.cuda.get_device_name(0))
 prefetch_factor = 64
 num_workers = 28
 batch_size = 16
-num_classes = 28
+num_classes = 28 # RFMiD dataset
+# num_classes = 20 # MuReD dataset
 selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
 ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
@@ -76,12 +77,24 @@ def get_dataset():
     ## Data augmentation
     train_dataset = MultilabelDataset(ann_dir='data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv',
                                 root_dir='data/fundus/RFMiD/Training_Set/Training',
+                                num_labels=num_classes,
                                 transform=transform, known_labels=1, testing=False)
+    ### MuReD dataset
+    # train_dataset = MultilabelDataset(ann_dir='data/fundus/MuReD/train_data.csv',
+    #                             root_dir='data/fundus/MuReD/images/images',
+    #                             num_labels=num_classes,
+    #                             transform=transform, known_labels=1, testing=False)
 
     # val dataset
     test_dataset = MultilabelDataset(ann_dir='data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv',
                                 root_dir='data/fundus/RFMiD/Evaluation_Set/Validation',
+                                num_labels=num_classes,
                                 transform=transform, known_labels=0, testing=True)
+    ### MuReD dataset
+    # test_dataset = MultilabelDataset(ann_dir='data/fundus/MuReD/test_data.csv',
+    #                             root_dir='data/fundus/MuReD/images/images',
+    #                             num_labels=num_classes,
+    #                             transform=transform, known_labels=0, testing=True)
 
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     return train_dataset, test_dataset, test_loader
@@ -131,7 +144,7 @@ def train(model, train_dataset, ctran_model=False):
                 optimizer.zero_grad()
                 outputs = model(inputs)
                 # print(outputs.shape, labels.shape)
-                loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='sum') # sigmoid + BCELoss
+                loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
             
             train_loss += loss_out.item()
             loss_out.backward()
@@ -167,7 +180,7 @@ def train(model, train_dataset, ctran_model=False):
                 else:
                     inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                     outputs = model(inputs)
-                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='sum')
+                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
                     
                 val_loss += loss_out.item()
 
@@ -291,7 +304,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
                     optimizer.zero_grad()
                     outputs = model(inputs)
                     # print(outputs.shape, labels.shape)
-                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='sum') # sigmoid + BCELoss
+                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
                     
                 train_loss += loss_out.item()
                 loss_out.backward()
@@ -329,7 +342,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
                     else:
                         inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                         outputs = model(inputs)
-                        loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='sum') # sigmoid + BCELoss
+                        loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
                         
                     val_loss += loss_out
 
