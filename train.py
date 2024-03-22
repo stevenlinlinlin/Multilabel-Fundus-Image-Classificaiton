@@ -16,7 +16,7 @@ import copy
 # Custom imports
 from dataloaders.multilabel_dataset import MultilabelDataset
 from models.resnet import ResNet50
-from models.densenet import DenseNet169
+from models.densenet import DenseNet169, DenseNet161
 from models.mobilenet import MobileNetV2
 from models.efficientnet import EfficientNetB3
 from models.vit import ViTForMultiLabelClassification
@@ -31,7 +31,7 @@ num_workers = 28
 batch_size = 16
 num_classes = 28
 selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
-ctran_model = True # True for CTran, False for CNN
+ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
 
 # Data transforms
@@ -44,7 +44,7 @@ loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss r
 transform = transforms.Compose([
     # Resize
     # transforms.Resize(232), # ResNet50
-    transforms.Resize(256),   # DenseNet169, MobileNetV2
+    transforms.Resize(256),   # DenseNet169/161, MobileNetV2
     # transforms.Resize(320),   # EfficientNet B3
     
     # CenterCrop
@@ -55,6 +55,15 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
+# Models
+def get_model():
+    # model = ResNet50(num_classes).to(device)
+    model = DenseNet161(num_classes).to(device)
+    # model = MobileNetV2(num_classes).to(device)
+    # model = EfficientNetB5(num_classes).to(device)
+    # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
+    # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
+    return model
 
 # datasets
 def get_dataset():
@@ -76,17 +85,6 @@ def get_dataset():
 
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     return train_dataset, test_dataset, test_loader
-
-# Models
-def get_model():
-    # model = ResNet50(num_classes).to(device)
-    # model = DenseNet169(num_classes).to(device)
-    # model = MobileNetV2(num_classes).to(device)
-    # model = EfficientNetB5(num_classes).to(device)
-    # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
-    model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
-    return model
-
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, ctran_model=False):
@@ -133,7 +131,7 @@ def train(model, train_dataset, ctran_model=False):
                 optimizer.zero_grad()
                 outputs = model(inputs)
                 # print(outputs.shape, labels.shape)
-                loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
+                loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='sum') # sigmoid + BCELoss
             
             train_loss += loss_out.item()
             loss_out.backward()
@@ -169,7 +167,7 @@ def train(model, train_dataset, ctran_model=False):
                 else:
                     inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                     outputs = model(inputs)
-                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
+                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='sum')
                     
                 val_loss += loss_out.item()
 
@@ -190,17 +188,20 @@ def train(model, train_dataset, ctran_model=False):
                 # total_samples += labels.size(0)
                 
                 ## method 3. AUC
-                outputs_np = F.sigmoid(outputs).cpu().numpy()
+                # outputs_np = F.sigmoid(outputs).cpu().numpy()
+                outputs_np = outputs.cpu().numpy()
                 labels_np = labels.cpu().numpy()
                 all_preds.extend(outputs_np)
                 all_labels.extend(labels_np)
                 
                 ## method 4. mAP
-                all_preds_4.append(F.sigmoid(outputs).cpu())
+                # all_preds_4.append(F.sigmoid(outputs).cpu())
+                all_preds_4.append(outputs.cpu())
                 all_labels_4.append(labels.cpu())
                 
                 ## method 5. F1 Score
-                predicted = F.sigmoid(outputs).cpu() > 0.5
+                # predicted = F.sigmoid(outputs).cpu() > 0.5
+                predicted = outputs.cpu() > 0.5
                 all_preds_5.append(predicted.numpy())
                 all_labels_5.append(labels.cpu().numpy())
 
@@ -261,7 +262,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
         
         train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
         val_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=val_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
-        
+        criterion = nn.BCELoss()
         for epoch in range(num_epochs):
             model.train()
             train_loss = 0.0
@@ -290,7 +291,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
                     optimizer.zero_grad()
                     outputs = model(inputs)
                     # print(outputs.shape, labels.shape)
-                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
+                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='sum') # sigmoid + BCELoss
                     
                 train_loss += loss_out.item()
                 loss_out.backward()
@@ -328,7 +329,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
                     else:
                         inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                         outputs = model(inputs)
-                        loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
+                        loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='sum') # sigmoid + BCELoss
                         
                     val_loss += loss_out
 
@@ -349,17 +350,20 @@ def train_kfold(model, train_dataset, ctran_model=False):
                     # total_samples += labels.size(0)
                     
                     ## method 3. AUC
-                    outputs_np = F.sigmoid(outputs).cpu().numpy()
+                    # outputs_np = F.sigmoid(outputs).cpu().numpy()
+                    outputs_np = outputs.cpu().numpy()
                     labels_np = labels.cpu().numpy()
                     all_preds.extend(outputs_np)
                     all_labels.extend(labels_np)
                     
                     ## method 4. mAP
-                    all_preds_4.append(F.sigmoid(outputs).cpu())
+                    # all_preds_4.append(F.sigmoid(outputs).cpu())
+                    all_preds_4.append(outputs.cpu())
                     all_labels_4.append(labels.cpu())
                     
                     ## method 5. F1 Score
-                    predicted = F.sigmoid(outputs).cpu() > 0.5
+                    # predicted = F.sigmoid(outputs).cpu() > 0.5
+                    predicted = outputs.cpu() > 0.5
                     all_preds_5.append(predicted.numpy())
                     all_labels_5.append(labels.cpu().numpy())
 
@@ -403,7 +407,6 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
         model.load_state_dict(best_model_state)
         
     model.eval()
-    val_loss = 0.0
     # correct_predictions = 0
     # total_jaccard_index = 0.0
     # total_samples = 0
@@ -427,16 +430,10 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
                 unk_mask = custom_replace(mask,1,0,0)
                 
                 outputs,int_pred,attns = model(images.to(device),mask_in.to(device))
-                
-                loss = F.binary_cross_entropy_with_logits(outputs.view(labels.size(0),-1),labels.cuda(), reduction='none')
-                loss_out = (unk_mask.cuda()*loss).sum()
             else:
                 inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                 outputs = model(inputs)
-                loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
                 
-            val_loss += loss_out
-
             # Calculate accuracy
             ## method 1. Strictly Accuracy
             # predicted_labels = (outputs > 0.5).float()
@@ -454,17 +451,20 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
             # total_samples += labels.size(0)
             
             ## method 3. AUC
-            outputs_np = F.sigmoid(outputs).cpu().numpy()
+            # outputs_np = F.sigmoid(outputs).cpu().numpy()
+            outputs_np = outputs.cpu().numpy()
             labels_np = labels.cpu().numpy()
             all_preds.extend(outputs_np)
             all_labels.extend(labels_np)
             
             ## method 4. mAP
-            all_preds_4.append(F.sigmoid(outputs).cpu())
+            # all_preds_4.append(F.sigmoid(outputs).cpu())
+            all_preds_4.append(outputs.cpu())
             all_labels_4.append(labels.cpu())
             
             ## method 5. F1 Score
-            predicted = F.sigmoid(outputs).cpu() > 0.5
+            # predicted = F.sigmoid(outputs).cpu() > 0.5
+            predicted = outputs.cpu() > 0.5
             all_preds_5.append(predicted.numpy())
             all_labels_5.append(labels.cpu().numpy())
 
