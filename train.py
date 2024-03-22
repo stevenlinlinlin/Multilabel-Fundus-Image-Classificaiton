@@ -262,7 +262,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
 
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     for fold, (train_idx, val_idx) in enumerate(kf.split(np.arange(len(train_dataset)))):
-        print(f"------------------ Fold {fold + 1}/{kf.get_n_splits()} --------------------")
+        print(f"----- Fold {fold + 1}/{kf.get_n_splits()} -----")
         
         train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
         val_sampler = torch.utils.data.SubsetRandomSampler(val_idx)
@@ -407,6 +407,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
 # Evaluate the model on the test set
 def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model=False):
     if best_model:
+        print("------ Best model evaluation -----")
         model.load_state_dict(best_model_state)
         
     model.eval()
@@ -507,9 +508,9 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
 if __name__ == "__main__":
     train_dataset, test_dataset, test_loader = get_dataset()
     model = get_model()
-    print("*****training*****")
+    print("******************** Training   ********************")
     # best_model_state = train(model, train_dataset, ctran_model=ctran_model)
     best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
-    print("*****evaluation*****")
+    print("******************** Evaluation ********************")
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model)
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model, best_model =True)
