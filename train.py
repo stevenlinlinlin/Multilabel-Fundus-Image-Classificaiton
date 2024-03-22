@@ -25,8 +25,10 @@ from models.ctran import CTranModel
 from models.utils import custom_replace
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# print(device)
+print(torch.cuda.get_device_name(0))
 
+prefetch_factor = 64
+num_workers = 28
 batch_size = 16
 num_classes = 28
 selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
@@ -80,7 +82,7 @@ def get_dataset():
     # test_dataset = CTranDataset(ann_dir='data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv',
     #                               root_dir='data/fundus/RFMiD/Evaluation_Set/Validation',
     #                               transform=transform, known_labels=0, testing=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     return train_dataset, test_dataset, test_loader
 
 # Models
@@ -100,14 +102,14 @@ def train(model, train_dataset, ctran_model=False):
         optimizer = optim.Adam(model.parameters(), lr=0.00001)
     else:
         optimizer = optim.Adam(model.parameters(), lr=0.0001)
-    num_epochs = 1
+    num_epochs = 30
 
     total_size = len(train_dataset)
     val_size = int(total_size * 0.2)
     train_size = total_size - val_size
     train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
 
     best_val_loss = float('inf')
     best_model_state = None
@@ -264,8 +266,8 @@ def train_kfold(model, train_dataset, ctran_model=False):
         train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
         val_sampler = torch.utils.data.SubsetRandomSampler(val_idx)
         
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
-        val_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=val_sampler)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
+        val_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=val_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
         
         for epoch in range(num_epochs):
             model.train()
@@ -354,50 +356,50 @@ def train_kfold(model, train_dataset, ctran_model=False):
                     # total_samples += labels.size(0)
                     
                     ## method 3. AUC
-                outputs_np = F.sigmoid(outputs).cpu().numpy()
-                labels_np = labels.cpu().numpy()
-                all_preds.extend(outputs_np)
-                all_labels.extend(labels_np)
-                
-                ## method 4. mAP
-                all_preds_4.append(F.sigmoid(outputs).cpu())
-                all_labels_4.append(labels.cpu())
-                
-                ## method 5. F1 Score
-                predicted = F.sigmoid(outputs).cpu() > 0.5
-                all_preds_5.append(predicted.numpy())
-                all_labels_5.append(labels.cpu().numpy())
+                    outputs_np = F.sigmoid(outputs).cpu().numpy()
+                    labels_np = labels.cpu().numpy()
+                    all_preds.extend(outputs_np)
+                    all_labels.extend(labels_np)
+                    
+                    ## method 4. mAP
+                    all_preds_4.append(F.sigmoid(outputs).cpu())
+                    all_labels_4.append(labels.cpu())
+                    
+                    ## method 5. F1 Score
+                    predicted = F.sigmoid(outputs).cpu() > 0.5
+                    all_preds_5.append(predicted.numpy())
+                    all_labels_5.append(labels.cpu().numpy())
 
 
-        ## method 1.
-        # accuracy = correct_predictions / total_samples
-        ## method 2.
-        # accuracy = total_jaccard_index / total_samples
-        ## method 3.
-        for i in range(labels_np.shape[1]):
-                label_specific_auc = roc_auc_score([label[i] for label in all_labels], [pred[i] for pred in all_preds])
-                auc_scores.append(label_specific_auc)
-        average_auc = sum(auc_scores) / len(auc_scores)
-        ## method 4. mAP
-        all_preds_4 = torch.cat(all_preds_4).numpy()
-        all_labels_4 = torch.cat(all_labels_4).numpy()
-        mAP = 0
-        for i in range(all_labels_4.shape[1]):
-            AP = average_precision_score(all_labels_4[:, i], all_preds_4[:, i])
-            mAP += AP
+            ## method 1.
+            # accuracy = correct_predictions / total_samples
+            ## method 2.
+            # accuracy = total_jaccard_index / total_samples
+            ## method 3.
+            for i in range(labels_np.shape[1]):
+                    label_specific_auc = roc_auc_score([label[i] for label in all_labels], [pred[i] for pred in all_preds])
+                    auc_scores.append(label_specific_auc)
+            average_auc = sum(auc_scores) / len(auc_scores)
+            ## method 4. mAP
+            all_preds_4 = torch.cat(all_preds_4).numpy()
+            all_labels_4 = torch.cat(all_labels_4).numpy()
+            mAP = 0
+            for i in range(all_labels_4.shape[1]):
+                AP = average_precision_score(all_labels_4[:, i], all_preds_4[:, i])
+                mAP += AP
 
-        mAP /= all_labels_4.shape[1]
-        ## method 5. F1 Score
-        all_preds_5 = np.vstack(all_preds_5)
-        all_labels_5 = np.vstack(all_labels_5)
-        f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
-        
-        current_val_loss = val_loss / len(val_loader)
-        if current_val_loss < best_val_loss:
-            best_val_loss = current_val_loss
-            best_model_state = copy.deepcopy(model.state_dict())
-        
-        print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}, F1_macro: {f1_macro:.3f}, Average AUC: {average_auc:.3f}, mAP: {mAP:.3f}')
+            mAP /= all_labels_4.shape[1]
+            ## method 5. F1 Score
+            all_preds_5 = np.vstack(all_preds_5)
+            all_labels_5 = np.vstack(all_labels_5)
+            f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
+            
+            current_val_loss = val_loss / len(val_loader)
+            if current_val_loss < best_val_loss:
+                best_val_loss = current_val_loss
+                best_model_state = copy.deepcopy(model.state_dict())
+            
+            print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}, F1_macro: {f1_macro:.3f}, Average AUC: {average_auc:.3f}, mAP: {mAP:.3f}')
     
 
 # Evaluate the model on the test set
@@ -503,6 +505,6 @@ if __name__ == "__main__":
     model = get_model()
     print("*****training*****")
     # train(model, train_dataset, ctran_model=ctran_model)
-    # train_kfold(model, train_dataset, ctran_model=ctran_model)
+    train_kfold(model, train_dataset, ctran_model=ctran_model)
     print("*****evaluation*****")
     evaluate(model, test_loader, ctran_model=ctran_model)
