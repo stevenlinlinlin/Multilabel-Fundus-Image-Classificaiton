@@ -29,8 +29,19 @@ print(torch.cuda.get_device_name(0))
 prefetch_factor = 64
 num_workers = 28
 batch_size = 16
-num_classes = 28 # RFMiD dataset
-# num_classes = 20 # MuReD dataset
+# RFMiD dataset
+num_classes = 28
+training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv'
+evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
+training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
+evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
+# MuReD dataset
+# num_classes = 20
+# training_labels_path = 'data/fundus/MuReD/train_data.csv'
+# evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
+# training_images_dir = 'data/fundus/MuReD/images/images'
+# evaluation_images_dir = 'data/fundus/MuReD/images/images'
+
 selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
 ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
@@ -69,32 +80,16 @@ def get_model():
 # datasets
 def get_dataset():
     # train dataset
-    ## Original dataset
-    # train_dataset = MultilabelDataset(ann_dir='data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv',
-    #                               root_dir='data/fundus/RFMiD/Training_Set/Training',
-    #                               transform=transform, known_labels=1, testing=False)
-
-    ## Data augmentation
-    train_dataset = MultilabelDataset(ann_dir='data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv',
-                                root_dir='data/fundus/RFMiD/Training_Set/Training',
+    train_dataset = MultilabelDataset(ann_dir=training_labels_path,
+                                root_dir=training_images_dir,
                                 num_labels=num_classes,
                                 transform=transform, known_labels=1, testing=False)
-    ### MuReD dataset
-    # train_dataset = MultilabelDataset(ann_dir='data/fundus/MuReD/train_data.csv',
-    #                             root_dir='data/fundus/MuReD/images/images',
-    #                             num_labels=num_classes,
-    #                             transform=transform, known_labels=1, testing=False)
 
     # val dataset
-    test_dataset = MultilabelDataset(ann_dir='data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv',
-                                root_dir='data/fundus/RFMiD/Evaluation_Set/Validation',
+    test_dataset = MultilabelDataset(ann_dir=evaluation_labels_path,
+                                root_dir=evaluation_images_dir,
                                 num_labels=num_classes,
                                 transform=transform, known_labels=0, testing=True)
-    ### MuReD dataset
-    # test_dataset = MultilabelDataset(ann_dir='data/fundus/MuReD/test_data.csv',
-    #                             root_dir='data/fundus/MuReD/images/images',
-    #                             num_labels=num_classes,
-    #                             transform=transform, known_labels=0, testing=True)
 
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     return train_dataset, test_dataset, test_loader
@@ -344,7 +339,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
                         outputs = model(inputs)
                         loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
                         
-                    val_loss += loss_out
+                    val_loss += loss_out.item()
 
                     # Calculate accuracy
                     ## method 1. Strictly Accuracy
