@@ -31,7 +31,6 @@ class DenseNet161(nn.Module):
             nn.ReLU(),
             # nn.Dropout(0.5),
             nn.Linear(512, num_classes),
-            nn.Sigmoid()
         )
         self.model = densenet161
 
