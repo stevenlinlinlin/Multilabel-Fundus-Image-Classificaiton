@@ -19,6 +19,7 @@ from models.resnet import ResNet50
 from models.densenet import DenseNet169, DenseNet161
 from models.mobilenet import MobileNetV2
 from models.efficientnet import EfficientNetB3
+from models.inception import InceptionV3
 from models.vit import ViTForMultiLabelClassification
 from models.ctran import CTranModel
 from models.utils import custom_replace
@@ -31,16 +32,16 @@ num_workers = 28
 batch_size = 16
 # RFMiD dataset
 num_classes = 28
-training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv'
-evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
-training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
-evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
+# training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv'
+# evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
+# training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
+# evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
 # MuReD dataset
-# num_classes = 20
-# training_labels_path = 'data/fundus/MuReD/train_data.csv'
-# evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
-# training_images_dir = 'data/fundus/MuReD/images/images'
-# evaluation_images_dir = 'data/fundus/MuReD/images/images'
+num_classes = 20
+training_labels_path = 'data/fundus/MuReD/train_data.csv'
+evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
+training_images_dir = 'data/fundus/MuReD/images/images'
+evaluation_images_dir = 'data/fundus/MuReD/images/images'
 
 selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
 ctran_model = False # True for CTran, False for CNN
@@ -56,11 +57,13 @@ loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss r
 transform = transforms.Compose([
     # Resize
     # transforms.Resize(232), # ResNet50
-    transforms.Resize(256),   # DenseNet169/161, MobileNetV2
+    # transforms.Resize(256),   # DenseNet169/161, MobileNetV2
     # transforms.Resize(320),   # EfficientNet B3
+    transforms.Resize(342),   # InceptionV3
     
     # CenterCrop
-    transforms.CenterCrop(224),
+    # transforms.CenterCrop(224),
+    transforms.CenterCrop(299), # InceptionV3 
     # transforms.CenterCrop(300), # EfficientNet B3
     
     transforms.ToTensor(),
@@ -70,9 +73,10 @@ transform = transforms.Compose([
 # Models
 def get_model():
     # model = ResNet50(num_classes).to(device)
-    model = DenseNet161(num_classes).to(device)
+    # model = DenseNet161(num_classes).to(device)
     # model = MobileNetV2(num_classes).to(device)
     # model = EfficientNetB5(num_classes).to(device)
+    model = InceptionV3(num_classes).to(device)
     # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
     # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
     return model
@@ -270,7 +274,6 @@ def train_kfold(model, train_dataset, ctran_model=False):
         
         train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
         val_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=val_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
-        criterion = nn.BCELoss()
         for epoch in range(num_epochs):
             model.train()
             train_loss = 0.0
@@ -299,6 +302,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
                     optimizer.zero_grad()
                     outputs = model(inputs)
                     # print(outputs.shape, labels.shape)
+                    # print(outputs)
                     loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
                     
                 train_loss += loss_out.item()
@@ -337,6 +341,7 @@ def train_kfold(model, train_dataset, ctran_model=False):
                     else:
                         inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                         outputs = model(inputs)
+                        # print(outputs.shape, labels.shape)
                         loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
                         
                     val_loss += loss_out.item()
