@@ -57,13 +57,13 @@ loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss r
 transform = transforms.Compose([
     # Resize
     # transforms.Resize(232), # ResNet50
-    # transforms.Resize(256),   # DenseNet169/161, MobileNetV2
+    transforms.Resize(256),   # DenseNet169/161, MobileNetV2
     # transforms.Resize(320),   # EfficientNet B3
-    transforms.Resize(342),   # InceptionV3
+    # transforms.Resize(342),   # InceptionV3
     
     # CenterCrop
-    # transforms.CenterCrop(224),
-    transforms.CenterCrop(299), # InceptionV3 
+    transforms.CenterCrop(224),
+    # transforms.CenterCrop(299), # InceptionV3 
     # transforms.CenterCrop(300), # EfficientNet B3
     
     transforms.ToTensor(),
@@ -73,10 +73,10 @@ transform = transforms.Compose([
 # Models
 def get_model():
     # model = ResNet50(num_classes).to(device)
-    # model = DenseNet161(num_classes).to(device)
+    model = DenseNet161(num_classes).to(device)
     # model = MobileNetV2(num_classes).to(device)
     # model = EfficientNetB5(num_classes).to(device)
-    model = InceptionV3(num_classes).to(device)
+    # model = InceptionV3(num_classes).to(device)
     # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
     # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
     return model
@@ -98,13 +98,24 @@ def get_dataset():
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     return train_dataset, test_dataset, test_loader
 
+def reset_weights(m):
+  '''
+    Try resetting model weights to avoid
+    weight leakage.
+  '''
+  for layer in m.children():
+   if hasattr(layer, 'reset_parameters'):
+    print(f'Reset trainable parameters of layer = {layer}')
+    layer.reset_parameters()
+
+
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, ctran_model=False):
     if ctran_model:
         optimizer = optim.Adam(model.parameters(), lr=0.00001)
     else:
         optimizer = optim.Adam(model.parameters(), lr=0.0001)
-    num_epochs = 30
+    num_epochs = 35
 
     total_size = len(train_dataset)
     val_size = int(total_size * 0.2)
@@ -256,11 +267,6 @@ def train(model, train_dataset, ctran_model=False):
 
 # Kfold cross validation (k=5)
 def train_kfold(model, train_dataset, ctran_model=False):
-    if ctran_model:
-        optimizer = optim.Adam(model.parameters(), lr=0.00001)
-    else:
-        optimizer = optim.Adam(model.parameters(), lr=0.0001)
-    
     num_epochs = 10
     best_val_loss = float('inf')
     best_model_state = None
@@ -274,6 +280,14 @@ def train_kfold(model, train_dataset, ctran_model=False):
         
         train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
         val_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=val_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
+        
+        if ctran_model:
+            optimizer = optim.Adam(model.parameters(), lr=0.00001)
+        else:
+            optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    
+        model.apply(reset_weights)
+        
         for epoch in range(num_epochs):
             model.train()
             train_loss = 0.0
@@ -514,8 +528,8 @@ if __name__ == "__main__":
     train_dataset, test_dataset, test_loader = get_dataset()
     model = get_model()
     print("******************** Training   ********************")
-    # best_model_state = train(model, train_dataset, ctran_model=ctran_model)
-    best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
+    best_model_state = train(model, train_dataset, ctran_model=ctran_model)
+    # best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
     print("******************** Evaluation ********************")
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model)
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model, best_model =True)
