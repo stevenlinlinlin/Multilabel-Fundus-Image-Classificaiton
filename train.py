@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.optim.lr_scheduler import StepLR
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score
@@ -32,16 +33,16 @@ num_workers = 28
 batch_size = 16
 # RFMiD dataset
 num_classes = 28
-# training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv'
-# evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
-# training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
-# evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
+training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv'
+evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
+training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
+evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
 # MuReD dataset
-num_classes = 20
-training_labels_path = 'data/fundus/MuReD/train_data.csv'
-evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
-training_images_dir = 'data/fundus/MuReD/images/images'
-evaluation_images_dir = 'data/fundus/MuReD/images/images'
+# num_classes = 20
+# training_labels_path = 'data/fundus/MuReD/train_data.csv'
+# evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
+# training_images_dir = 'data/fundus/MuReD/images/images'
+# evaluation_images_dir = 'data/fundus/MuReD/images/images'
 
 selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
 ctran_model = False # True for CTran, False for CNN
@@ -115,8 +116,11 @@ def train(model, train_dataset, ctran_model=False):
         optimizer = optim.Adam(model.parameters(), lr=0.00001)
     else:
         optimizer = optim.Adam(model.parameters(), lr=0.0001)
-    num_epochs = 35
-
+        
+    num_epochs = 50
+    scheduler = StepLR(optimizer, step_size=20, gamma=0.1) 
+    
+    torch.manual_seed(42)
     total_size = len(train_dataset)
     val_size = int(total_size * 0.2)
     train_size = total_size - val_size
@@ -159,6 +163,8 @@ def train(model, train_dataset, ctran_model=False):
             train_loss += loss_out.item()
             loss_out.backward()
             optimizer.step()
+            
+        scheduler.step()   
 
         # Evaluate the model on the validation set
         model.eval()
@@ -277,7 +283,6 @@ def train_kfold(model, train_dataset, ctran_model=False):
         
         train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
         val_sampler = torch.utils.data.SubsetRandomSampler(val_idx)
-        
         train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
         val_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=val_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
         
