@@ -6,14 +6,15 @@ class InceptionV3(nn.Module):
         super(InceptionV3, self).__init__()
         inceptionv3 = models.inception_v3(weights='DEFAULT')
         num_features = inceptionv3.fc.in_features # 2048
-        inceptionv3.fc = nn.Sequential(
-            # nn.BatchNorm1d(num_features),
-            nn.Linear(num_features, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            # nn.Dropout(0.5),
-            nn.Linear(512, num_classes),
-        )
+        # inceptionv3.fc = nn.Sequential(
+        #     # nn.BatchNorm1d(num_features),
+        #     nn.Linear(num_features, 512),
+        #     nn.BatchNorm1d(512),
+        #     nn.ReLU(),
+        #     # nn.Dropout(0.5),
+        #     nn.Linear(512, num_classes),
+        # )
+        inceptionv3.fc = nn.Linear(num_features, num_classes)
         self.model = inceptionv3
 
     def forward(self, x):
