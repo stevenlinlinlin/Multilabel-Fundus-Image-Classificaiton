@@ -2,7 +2,7 @@ from torch import nn
 import torch.nn.functional as F
 
 class TransformerEncoderLayer(nn.Module):
-    def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1):
+    def __init__(self, d_model, nhead, dim_feedforward=2088, dropout=0.1):
         super(TransformerEncoderLayer, self).__init__()
         # Custom method to return attn outputs. Otherwise same as nn.TransformerEncoderLayer
         self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)

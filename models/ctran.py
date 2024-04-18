@@ -4,16 +4,17 @@ import torch.nn as nn
 
 from models.utils import positionalencoding2d, weights_init, custom_replace
 from models.transformerencoder import SelfAttnLayer
-from models.backbone import DenseNetBackbone
+from models.backbone import ResNetBackbone, DenseNetBackbone
 
 class CTranModel(nn.Module):
-    def __init__(self,num_labels,use_lmt,pos_emb=False,layers=3,heads=4,dropout=0.1):
+    def __init__(self,num_labels,use_lmt,pos_emb=False,layers=3,heads=1,dropout=0.1):
         super(CTranModel, self).__init__()
         self.use_lmt = use_lmt
 
         # image feature backbone
         self.backbone = DenseNetBackbone()
-        hidden = 2208 # this should match the backbone output feature size
+        # hidden = 2048 # ResNet
+        hidden = 2208 # DenseNet
 
         self.downsample = False
         if self.downsample:
