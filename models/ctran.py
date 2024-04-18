@@ -58,6 +58,7 @@ class CTranModel(nn.Module):
         init_label_embeddings = self.label_lt(const_label_input)
 
         features = self.backbone(images)
+        # print(features.size())
         
         if self.downsample:
             features = self.conv_downsample(features)
@@ -65,7 +66,8 @@ class CTranModel(nn.Module):
             pos_encoding = self.position_encoding(features,torch.zeros(features.size(0),18,18, dtype=torch.bool).cuda())
             features = features + pos_encoding
         
-        features = features.view(features.size(0),features.size(1),-1).permute(0,2,1) 
+        features = features.view(features.size(0),features.size(1),-1).permute(0,2,1)
+        # print(features.size())
         
         if self.use_lmt:
             # Convert mask values to positive integers for nn.Embedding
