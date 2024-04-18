@@ -22,7 +22,8 @@ class DenseNet169(nn.Module):
 class DenseNet161(nn.Module):
     def __init__(self, num_classes):
         super(DenseNet161, self).__init__()
-        densenet161 = models.densenet161(weights='DEFAULT')
+        # densenet161 = models.densenet161(weights='DEFAULT')
+        densenet161 = models.densenet161()
         num_features = densenet161.classifier.in_features  # 2208
         densenet161.classifier = nn.Sequential(
             # nn.BatchNorm1d(num_features),
