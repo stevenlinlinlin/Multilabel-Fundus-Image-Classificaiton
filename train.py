@@ -9,21 +9,22 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
-from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score
+from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score, precision_score, recall_score
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 import copy
 
 # Custom imports
 from dataloaders.multilabel_dataset import MultilabelDataset
-from models.resnet import ResNet50
+from models.resnet import ResNet50, ResNet152
 from models.densenet import DenseNet169, DenseNet161
 from models.mobilenet import MobileNetV2
-from models.efficientnet import EfficientNetB3
+from models.efficientnet import EfficientNetB3, EfficientNetB5
 from models.inception import InceptionV3
 from models.vit import ViTForMultiLabelClassification
 from models.ctran import CTranModel
 from models.utils import custom_replace
+from models.mydensenet import CustomDenseNet1, CustomDenseNet2, CustomDenseNet3, CustomDenseNet4
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
@@ -32,17 +33,17 @@ prefetch_factor = 64
 num_workers = 28
 batch_size = 16
 # RFMiD dataset
-num_classes = 28
-training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv'
-evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
-training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
-evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
+# num_classes = 28
+# training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels_augmented.csv'
+# evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
+# training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
+# evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
 # MuReD dataset
-# num_classes = 20
-# training_labels_path = 'data/fundus/MuReD/train_data.csv'
-# evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
-# training_images_dir = 'data/fundus/MuReD/images/images'
-# evaluation_images_dir = 'data/fundus/MuReD/images/images'
+num_classes = 20
+training_labels_path = 'data/fundus/MuReD/train_data.csv'
+evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
+training_images_dir = 'data/fundus/MuReD/images/images'
+evaluation_images_dir = 'data/fundus/MuReD/images/images'
 
 selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
 ctran_model = False # True for CTran, False for CNN
@@ -57,7 +58,7 @@ loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss r
 #### For CNN
 transform = transforms.Compose([
     # Resize
-    # transforms.Resize(232), # ResNet50
+    # transforms.Resize(232), # ResNet50/ResNet152
     transforms.Resize(256),   # DenseNet169/161, MobileNetV2
     # transforms.Resize(320),   # EfficientNet B3
     # transforms.Resize(342),   # InceptionV3
@@ -73,13 +74,15 @@ transform = transforms.Compose([
 
 # Models
 def get_model():
-    # model = ResNet50(num_classes).to(device)
-    model = DenseNet161(num_classes).to(device)
+    # model = ResNet152(num_classes).to(device)
+    # model = DenseNet161(num_classes).to(device)
     # model = MobileNetV2(num_classes).to(device)
-    # model = EfficientNetB5(num_classes).to(device)
+    # model = EfficientNetB3(num_classes).to(device)
     # model = InceptionV3(num_classes).to(device)
     # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
     # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
+    model = CustomDenseNet2(num_classes).to(device)
+    
     return model
 
 # datasets
@@ -113,18 +116,18 @@ def reset_weights(m):
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, ctran_model=False):
     if ctran_model:
-        optimizer = optim.Adam(model.parameters(), lr=0.00001)
+        optimizer = optim.Adam(model.parameters(), lr=0.0001)
     else:
         optimizer = optim.Adam(model.parameters(), lr=0.0001)
         
-    num_epochs = 50
-    scheduler = StepLR(optimizer, step_size=20, gamma=0.1) 
+    num_epochs = 35
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
-    torch.manual_seed(42)
+    # torch.manual_seed(13)
     total_size = len(train_dataset)
     val_size = int(total_size * 0.2)
     train_size = total_size - val_size
-    train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size])
+    train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(146))
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
 
@@ -142,7 +145,7 @@ def train(model, train_dataset, ctran_model=False):
                 mask_in = mask.clone()
                 
                 optimizer.zero_grad()
-                outputs,int_pred,attns = model(images.to(device),mask_in.to(device))
+                outputs,_,_ = model(images.to(device),mask_in.to(device))
                 
                 loss =  F.binary_cross_entropy_with_logits(outputs.view(labels.size(0),-1),labels.cuda(),reduction='none')
                 if loss_labels == 'unk': 
@@ -443,6 +446,8 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
     # total_jaccard_index = 0.0
     # total_samples = 0
     auc_scores = []
+    precision_scores = []
+    recall_scores = []
 
     with torch.no_grad():
         
@@ -511,7 +516,16 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
         # print([label[i] for label in all_labels], [pred[i] for pred in all_preds])
         label_specific_auc = roc_auc_score([label[i] for label in all_labels], [pred[i] for pred in all_preds])
         auc_scores.append(label_specific_auc)
+        
+        # Precision and Recall
+        label_specific_precision = precision_score([label[i] for label in all_labels], [pred[i] > 0.5 for pred in all_preds], zero_division=0)
+        label_specific_recall = recall_score([label[i] for label in all_labels], [pred[i] > 0.5 for pred in all_preds], zero_division=0)
+        precision_scores.append(label_specific_precision)
+        recall_scores.append(label_specific_recall)
+        
     average_auc = sum(auc_scores) / len(auc_scores)
+    average_precision = sum(precision_scores) / len(precision_scores)
+    average_recall = sum(recall_scores) / len(recall_scores)
     ## method 4. mAP
     all_preds_4 = torch.cat(all_preds_4).numpy()
     all_labels_4 = torch.cat(all_labels_4).numpy()
@@ -526,7 +540,7 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
     all_labels_5 = np.vstack(all_labels_5)
     f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
 
-    print(f'Evaluation - F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}')
+    print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}')
 
 
 if __name__ == "__main__":
