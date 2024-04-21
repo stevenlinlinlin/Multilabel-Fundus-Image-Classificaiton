@@ -81,7 +81,7 @@ def get_model():
     # model = InceptionV3(num_classes).to(device)
     # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
     # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
-    model = CustomDenseNet2(num_classes).to(device)
+    model = CustomDenseNet4(num_classes).to(device)
     
     return model
 
@@ -269,7 +269,7 @@ def train(model, train_dataset, ctran_model=False):
         all_labels_5 = np.vstack(all_labels_5)
         f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
         
-        print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}, F1_macro: {f1_macro:.3f}, Average AUC: {average_auc:.3f}, mAP: {mAP:.3f}')
+        print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}')
     return best_model_state
 
 
@@ -540,7 +540,7 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
     all_labels_5 = np.vstack(all_labels_5)
     f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
 
-    print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}')
+    print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
 
 
 if __name__ == "__main__":
