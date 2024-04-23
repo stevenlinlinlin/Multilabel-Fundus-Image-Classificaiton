@@ -36,6 +36,10 @@ def weights_init(module):
     elif isinstance(module, nn.LayerNorm):
         module.bias.data.zero_()
         module.weight.data.fill_(1.0)
+    if isinstance(module, nn.Conv2d):
+        nn.init.kaiming_uniform_(module.weight, mode='fan_out', nonlinearity='relu')
+        if module.bias is not None:
+            module.bias.data.zero_()
         
         
 def custom_replace(tensor,on_neg_1,on_zero,on_one):
