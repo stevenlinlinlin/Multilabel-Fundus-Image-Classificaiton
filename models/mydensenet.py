@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+from models.utils import weights_init
+from models.transformerencoder import SelfAttnLayer
 
 class CustomDenseNet1(nn.Module):
     def __init__(self, num_classes):
@@ -17,6 +19,8 @@ class CustomDenseNet1(nn.Module):
             nn.Dropout(0.5),
             nn.Linear(512, num_classes),
         )
+        
+        self.classifier.apply(weights_init)
         
     def forward(self, x):
         features = []
@@ -39,7 +43,7 @@ class CustomDenseNet2(nn.Module):
         self.conv = nn.Conv2d(2208, 28, kernel_size=1)
         self.bn = nn.BatchNorm2d(num_features=2208)
         self.to_features = nn.Flatten(start_dim=2)
-        self.attention = nn.MultiheadAttention(embed_dim=2208, num_heads=1, dropout=0.2, batch_first=True)
+        self.attention = nn.MultiheadAttention(embed_dim=2208, num_heads=1, dropout=0.1, batch_first=True)
         self.layer_norm = nn.LayerNorm(2208)
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
         self.dropout = nn.Dropout(0.5)
@@ -55,6 +59,8 @@ class CustomDenseNet2(nn.Module):
         self.dropout = nn.Dropout(0.5)
         # self.relu = nn.ReLU()
         # self.classifier = nn.Linear(49, num_classes)
+        
+        self.classifier.apply(weights_init)
         
     def forward(self, x):
         x = self.features(x)
@@ -78,7 +84,7 @@ class CustomDenseNet3(nn.Module):
         self.features = models.densenet161(weights='DEFAULT').features
         self.bn = nn.BatchNorm2d(num_features=2208)
         self.to_features = nn.Flatten(start_dim=2)
-        self.attention = nn.MultiheadAttention(embed_dim=2208, num_heads=4, dropout=0.2, batch_first=True)
+        self.attention = nn.MultiheadAttention(embed_dim=2208, num_heads=1, dropout=0.1, batch_first=True)
         # self.cls_token = nn.Parameter(torch.randn(1, 1, 2208))
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
         self.relu = nn.ReLU()
@@ -94,6 +100,8 @@ class CustomDenseNet3(nn.Module):
             nn.Linear(512, num_classes),
         )
         # self.classifier = nn.Linear(2208, num_classes)
+        
+        self.classifier.apply(weights_init)
         
     def forward(self, x):
         x = self.features(x)
@@ -140,16 +148,46 @@ class CustomDenseNet4(nn.Module):
         self.layer_norm = nn.LayerNorm(num_classes)
         self.classifier = nn.Linear(2208, num_classes)
         
+        self.conv1.apply(weights_init)
+        self.conv2.apply(weights_init)
+        
     def forward(self, x):
         x = self.features(x)
         # x = self.bn1(x)
         # x = self.relu(x)
-        # x = self.conv1x1(x)
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-        x = self.conv2(x)
-        x = self.gap(x)
+        x = self.conv1x1(x)
+        # x = self.conv1(x)
+        # x = self.relu(x)
+        # x = self.dropout(x)
+        # x = self.conv2(x)
         # x = self.bn2(x)
+        x = self.gap(x)
         x = x.view(x.size(0), -1)
         return x
+    
+    
+# class CustomDenseNet5(nn.Module):
+#     def __init__(self, num_classes):
+#         super(CustomDenseNet5, self).__init__()
+#         self.features = models.densenet161(weights='DEFAULT').features
+#         self.conv1x1 = nn.Conv2d(2208, num_classes, kernel_size=1)
+#         self.self_attn_layers = nn.ModuleList([SelfAttnLayer(2208,1,0.1) for _ in range(1)])
+#         self.output_linear = torch.nn.Linear(2208,num_classes)
+        
+#         self.conv1x1.apply(weights_init)
+#         self.output_linear.apply(weights_init)
+#         self.self_attn_layers.apply(weights_init)
+        
+#     def forward(self, x):
+#         x = self.features(x)
+#         # x = self.conv1x1(x)
+#         x = x.view(x.size(0), x.size(1), -1).permute(0,2,1)
+#         attns = []
+#         for layer in self.self_attn_layers:
+#             x,attn = layer(x)
+#             attns += attn.detach().unsqueeze(0).data
+#         x = x.permute(0,2,1)
+#         x = self.output_linear(x).squeeze(-1)
+#         diag_mask = torch.eye(x.size(1)).unsqueeze(0).repeat(x.size(0),1,1).cuda()
+#         x = (x*diag_mask).sum(-1)
+#         return x
