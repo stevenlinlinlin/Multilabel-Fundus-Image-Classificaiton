@@ -8,6 +8,9 @@ from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_pre
 from sklearn.model_selection import KFold
 import copy
 from typing import Optional
+import matplotlib.pyplot as plt
+import pandas as pd
+import csv
 
 from models.utils import custom_replace
 
@@ -333,3 +336,47 @@ def kullback_leibler_divergence(p, q):
     q = np.where(q > 0, q, eps)
     kl_div = np.sum(p * np.log(p / q + eps), axis=0)
     return kl_div
+
+
+def plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path):
+    all_preds = np.array(all_preds)
+    all_labels = np.array(all_labels)
+
+    n_classes = all_labels.shape[1]
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(all_labels[:, i], all_preds[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    plt.figure()
+    # colors = ['aqua', 'darkorange', 'cornflowerblue', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive']
+    class_names = pd.read_csv(evaluation_labels_path).columns.tolist()[1:]
+    for i, cls_name in zip(range(n_classes), class_names):
+        plt.plot(fpr[i], tpr[i], lw=2,
+                label=f'{cls_name} ({roc_auc[i]:.2f})')
+
+    plt.plot([0, 1], [0, 1], 'k--', lw=2)
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Multi-label ROC')
+    plt.legend(loc="lower right")
+    plt.savefig(auc_fig_path)
+    
+def result2csv(results_path, evaluation_labels_path, precision_list, recall_list, f1_list, ap_list, auc_list):
+    class_names = pd.read_csv(evaluation_labels_path).columns.tolist()[1:]
+    with open(results_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['diseases', 'Precision', 'Recall', 'F1', 'AP', 'AUC'])
+        for class_name, precision, recall, f1, ap, auc in zip(class_names, precision_list, recall_list, f1_list, ap_list, auc_list):
+            formatted_class_name = f"{class_name:<8}"  
+            formatted_precision = f"{precision:.3f}".ljust(8)
+            formatted_recall = f"{recall:.3f}".ljust(8)
+            formatted_f1 = f"{f1:.3f}".ljust(8)
+            formatted_ap = f"{ap:.3f}".ljust(8)
+            formatted_auc = f"{auc:.3f}".ljust(8)
+            writer.writerow([formatted_class_name, formatted_precision, formatted_recall, formatted_f1, formatted_ap, formatted_auc])

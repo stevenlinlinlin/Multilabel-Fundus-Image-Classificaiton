@@ -11,7 +11,6 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score, precision_score, recall_score
 from sklearn.model_selection import KFold
-import matplotlib.pyplot as plt
 import copy
 
 # Custom imports
@@ -47,7 +46,10 @@ evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
 training_images_dir = 'data/fundus/MuReD/images/images'
 evaluation_images_dir = 'data/fundus/MuReD/images/images'
 
-ctran_model = False # True for CTran, False for CNN
+# auc_fig_path = 'results/auc/densenet161.png'
+results_path = 'results/ctran.csv'
+
+ctran_model = True # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
 
 # Data transforms
@@ -76,12 +78,12 @@ transform = transforms.Compose([
 # Models
 def get_model():
     # model = ResNet152(num_classes).to(device)
-    model = DenseNet161(num_classes).to(device)
+    # model = DenseNet161(num_classes).to(device)
     # model = MobileNetV2(num_classes).to(device)
     # model = EfficientNetB3(num_classes).to(device)
     # model = InceptionV3(num_classes).to(device)
     # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
-    # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
+    model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
     # model = CustomDenseNet4(num_classes).to(device)
     
     return model
@@ -531,8 +533,10 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
     all_preds_4 = torch.cat(all_preds_4).numpy()
     all_labels_4 = torch.cat(all_labels_4).numpy()
     mAP = 0
+    mAP_per_label = []
     for i in range(all_labels_4.shape[1]):
         AP = average_precision_score(all_labels_4[:, i], all_preds_4[:, i])
+        mAP_per_label.append(AP)
         mAP += AP
 
     mAP /= all_labels_4.shape[1]
@@ -540,17 +544,20 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
     all_preds_5 = np.vstack(all_preds_5)
     all_labels_5 = np.vstack(all_labels_5)
     f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
+    f1_list = f1_score(all_labels_5, all_preds_5, average=None)
 
+    result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
     print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
+    # plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path)
 
 
 if __name__ == "__main__":
     train_dataset, test_dataset, test_loader = get_dataset()
     model = get_model()
     print("******************** Training   ********************")
-    # best_model_state = train(model, train_dataset, ctran_model=ctran_model)
-    best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model)
+    best_model_state = train(model, train_dataset, ctran_model=ctran_model)
+    # best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model)
     # best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
     print("******************** Evaluation ********************")
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model)
-    evaluate(model, best_model_state, test_loader, ctran_model=ctran_model, best_model =True)
+    # evaluate(model, best_model_state, test_loader, ctran_model=ctran_model, best_model =True)
