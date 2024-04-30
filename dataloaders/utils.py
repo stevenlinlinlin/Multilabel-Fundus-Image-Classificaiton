@@ -42,7 +42,7 @@ def image_loader(path,transform):
         image = Image.open(path)
 
     image = image.convert('RGB')
-    # image = fov_extractor(np.array(image))
+    image = fov_extractor(np.array(image))
     
     if transform is not None:
         image = transform(image)
