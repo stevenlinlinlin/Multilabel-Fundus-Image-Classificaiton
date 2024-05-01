@@ -45,11 +45,12 @@ training_labels_path = 'data/fundus/MuReD/train_data.csv'
 evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
 training_images_dir = 'data/fundus/MuReD/images/images'
 evaluation_images_dir = 'data/fundus/MuReD/images/images'
+da_training_images_dir = None # 'data/fundus/MuReD/images/lpros045' or None
 
 # auc_fig_path = 'results/auc/densenet161.png'
-results_path = 'results/ctran.csv'
+results_path = 'results/proposed-4_plm.csv'
 
-ctran_model = True # True for CTran, False for CNN
+ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
 
 # Data transforms
@@ -83,8 +84,8 @@ def get_model():
     # model = EfficientNetB3(num_classes).to(device)
     # model = InceptionV3(num_classes).to(device)
     # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
-    model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
-    # model = CustomDenseNet4(num_classes).to(device)
+    # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
+    model = CustomDenseNet4(num_classes).to(device)
     
     return model
 
@@ -94,7 +95,7 @@ def get_dataset():
     train_dataset = MultilabelDataset(ann_dir=training_labels_path,
                                 root_dir=training_images_dir,
                                 num_labels=num_classes,
-                                transform=transform, known_labels=1, testing=False)
+                                transform=transform, known_labels=1, testing=False, da_root_dir=da_training_images_dir)
 
     # val dataset
     test_dataset = MultilabelDataset(ann_dir=evaluation_labels_path,
@@ -110,6 +111,7 @@ def get_dataset():
 def train(model, train_dataset, ctran_model=False):    
     num_epochs = 35
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    # optimizer = optim.Adam(model.parameters(), lr=0.00001)
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
     # torch.manual_seed(13)
@@ -264,6 +266,7 @@ def train(model, train_dataset, ctran_model=False):
 
 # train with Partial Label Masking
 def train_plm(model, train_dataset, ctran_model=False):
+    print(f"[Training with Partial Label Masking]")
     num_epochs = 35
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
@@ -554,9 +557,10 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
 if __name__ == "__main__":
     train_dataset, test_dataset, test_loader = get_dataset()
     model = get_model()
+    print(f"===== Model: {model.__class__.__name__} =====")
     print("******************** Training   ********************")
-    best_model_state = train(model, train_dataset, ctran_model=ctran_model)
-    # best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model)
+    # best_model_state = train(model, train_dataset, ctran_model=ctran_model)
+    best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model)
     # best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
     print("******************** Evaluation ********************")
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model)
