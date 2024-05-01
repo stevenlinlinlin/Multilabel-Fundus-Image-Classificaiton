@@ -1,5 +1,5 @@
 /data/
 /dataloaders/__pycache__/
 /models/__pycache__/
-*.pyc
+/__pycache__/
 /results/
