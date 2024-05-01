@@ -27,7 +27,7 @@ def reset_weights(m):
 
 # Kfold cross validation (k=5)
 def train_kfold(model, train_dataset, ctran_model=False, batch_size=32, prefetch_factor=2, num_workers=4, device='cuda', loss_labels='unk'):
-    print(f"Training with KFold cross validation")
+    print(f"[Training with KFold cross validation]")
     num_epochs = 10
     best_val_loss = float('inf')
     best_model_state = None
