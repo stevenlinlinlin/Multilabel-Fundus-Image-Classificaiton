@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score, precision_score, recall_score
 from sklearn.model_selection import KFold
 import copy
+from tqdm import tqdm 
 
 # Custom imports
 from utils import *
@@ -29,7 +30,7 @@ from models.mydensenet import CustomDenseNet1, CustomDenseNet2, CustomDenseNet3,
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
 
-prefetch_factor = 64
+prefetch_factor = 256
 num_workers = 28
 batch_size = 16
 # RFMiD dataset
@@ -48,7 +49,7 @@ evaluation_images_dir = 'data/fundus/MuReD/images/images'
 da_training_images_dir = None # 'data/fundus/MuReD/images/lpros045' or None
 
 # auc_fig_path = 'results/auc/densenet161.png'
-results_path = 'results/proposed-4_plm.csv'
+results_path = 'results/proposed-4_fov.csv'
 
 ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
@@ -124,7 +125,7 @@ def train(model, train_dataset, ctran_model=False):
 
     best_val_loss = float('inf')
     best_model_state = None
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs), desc='Epoch'):
         model.train()
         train_loss = 0.0
         for batch in train_loader:
@@ -289,7 +290,7 @@ def train_plm(model, train_dataset, ctran_model=False):
 
     best_val_loss = float('inf')
     best_model_state = None
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs), desc='Epoch'):
         model.train()
         train_loss = 0.0
         for batch in train_loader:
@@ -559,8 +560,8 @@ if __name__ == "__main__":
     model = get_model()
     print(f"===== Model: {model.__class__.__name__} =====")
     print("******************** Training   ********************")
-    # best_model_state = train(model, train_dataset, ctran_model=ctran_model)
-    best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model)
+    best_model_state = train(model, train_dataset, ctran_model=ctran_model)
+    # best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model)
     # best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
     print("******************** Evaluation ********************")
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model)
