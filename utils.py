@@ -13,7 +13,7 @@ import pandas as pd
 import csv
 
 from models.utils import custom_replace
-
+eps = np.finfo(float).eps
 
 def reset_weights(m):
   '''
@@ -24,6 +24,49 @@ def reset_weights(m):
    if hasattr(layer, 'reset_parameters'):
     print(f'Reset trainable parameters of layer = {layer}')
     layer.reset_parameters()
+    
+def plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path):
+    all_preds = np.array(all_preds)
+    all_labels = np.array(all_labels)
+
+    n_classes = all_labels.shape[1]
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(all_labels[:, i], all_preds[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    plt.figure()
+    # colors = ['aqua', 'darkorange', 'cornflowerblue', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive']
+    class_names = pd.read_csv(evaluation_labels_path).columns.tolist()[1:]
+    for i, cls_name in zip(range(n_classes), class_names):
+        plt.plot(fpr[i], tpr[i], lw=2,
+                label=f'{cls_name} ({roc_auc[i]:.2f})')
+
+    plt.plot([0, 1], [0, 1], 'k--', lw=2)
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Multi-label ROC')
+    plt.legend(loc="lower right")
+    plt.savefig(auc_fig_path)
+    
+def result2csv(results_path, evaluation_labels_path, precision_list, recall_list, f1_list, ap_list, auc_list):
+    class_names = pd.read_csv(evaluation_labels_path).columns.tolist()[1:]
+    with open(results_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['diseases', 'Precision', 'Recall', 'F1', 'AP', 'AUC'])
+        for class_name, precision, recall, f1, ap, auc in zip(class_names, precision_list, recall_list, f1_list, ap_list, auc_list):
+            formatted_class_name = f"{class_name:<8}"  
+            formatted_precision = f"{precision:.3f}".ljust(8)
+            formatted_recall = f"{recall:.3f}".ljust(8)
+            formatted_f1 = f"{f1:.3f}".ljust(8)
+            formatted_ap = f"{ap:.3f}".ljust(8)
+            formatted_auc = f"{auc:.3f}".ljust(8)
+            writer.writerow([formatted_class_name, formatted_precision, formatted_recall, formatted_f1, formatted_ap, formatted_auc])
 
 # Kfold cross validation (k=5)
 def train_kfold(model, train_dataset, ctran_model=False, batch_size=32, prefetch_factor=2, num_workers=4, device='cuda', loss_labels='unk'):
@@ -186,7 +229,6 @@ def train_kfold(model, train_dataset, ctran_model=False, batch_size=32, prefetch
             print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}, F1_macro: {f1_macro:.3f}, Average AUC: {average_auc:.3f}, mAP: {mAP:.3f}')
     return best_model_state
 
-eps = np.finfo(float).eps
 def get_positive_ratio(dataset) -> np.ndarray:
     y = get_y_true(dataset)
     n_samples = len(y)
@@ -338,46 +380,180 @@ def kullback_leibler_divergence(p, q):
     kl_div = np.sum(p * np.log(p / q + eps), axis=0)
     return kl_div
 
-
-def plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path):
-    all_preds = np.array(all_preds)
-    all_labels = np.array(all_labels)
-
-    n_classes = all_labels.shape[1]
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-
-    for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve(all_labels[:, i], all_preds[:, i])
-        roc_auc[i] = auc(fpr[i], tpr[i])
-
-    plt.figure()
-    # colors = ['aqua', 'darkorange', 'cornflowerblue', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive']
-    class_names = pd.read_csv(evaluation_labels_path).columns.tolist()[1:]
-    for i, cls_name in zip(range(n_classes), class_names):
-        plt.plot(fpr[i], tpr[i], lw=2,
-                label=f'{cls_name} ({roc_auc[i]:.2f})')
-
-    plt.plot([0, 1], [0, 1], 'k--', lw=2)
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Multi-label ROC')
-    plt.legend(loc="lower right")
-    plt.savefig(auc_fig_path)
+# train with Partial Label Masking
+def train_plm(model, train_dataset, ctran_model=False):
+    print(f"[Training with Partial Label Masking]")
+    num_epochs = 35
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
-def result2csv(results_path, evaluation_labels_path, precision_list, recall_list, f1_list, ap_list, auc_list):
-    class_names = pd.read_csv(evaluation_labels_path).columns.tolist()[1:]
-    with open(results_path, 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['diseases', 'Precision', 'Recall', 'F1', 'AP', 'AUC'])
-        for class_name, precision, recall, f1, ap, auc in zip(class_names, precision_list, recall_list, f1_list, ap_list, auc_list):
-            formatted_class_name = f"{class_name:<8}"  
-            formatted_precision = f"{precision:.3f}".ljust(8)
-            formatted_recall = f"{recall:.3f}".ljust(8)
-            formatted_f1 = f"{f1:.3f}".ljust(8)
-            formatted_ap = f"{ap:.3f}".ljust(8)
-            formatted_auc = f"{auc:.3f}".ljust(8)
-            writer.writerow([formatted_class_name, formatted_precision, formatted_recall, formatted_f1, formatted_ap, formatted_auc])
+    # torch.manual_seed(13)
+    total_size = len(train_dataset)
+    val_size = int(total_size * 0.2)
+    train_size = total_size - val_size
+    train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(146))
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
+    
+    change_rate = 1e-1
+    positive_ratio = get_positive_ratio(train_loader).astype(np.float32)
+    ideal_positive_ratio = copy.deepcopy(positive_ratio)
+    hist = ProbabilityHistograms(n_classes=num_classes, n_bins=5)
+    mask_generator = MaskGenerator(
+        generator=RandomMultiHotGenerator(seed=146)
+    )
+
+    best_val_loss = float('inf')
+    best_model_state = None
+    for epoch in tqdm(range(num_epochs), desc='Epoch'):
+        model.train()
+        train_loss = 0.0
+        for batch in train_loader:
+            plm_mask = mask_generator.generate(
+                batch['labels'], positive_ratio, ideal_positive_ratio
+            )
+            # print(plm_mask)
+            plm_mask = torch.from_numpy(plm_mask).to(device)
+            
+            if ctran_model:
+                labels = batch['labels'].float()
+                images = batch['image'].float()
+                mask = batch['mask'].float()
+                unk_mask = custom_replace(mask,1,0,0)
+                mask_in = mask.clone()
+                
+                optimizer.zero_grad()
+                outputs,_,_ = model(images.to(device),mask_in.to(device))
+                
+                loss =  F.binary_cross_entropy_with_logits(outputs.view(labels.size(0),-1),labels.cuda(),reduction='none')
+                if loss_labels == 'unk': 
+                    # only use unknown labels for loss
+                    loss_out = (unk_mask.cuda()*loss).sum()
+                else: 
+                    # use all labels for loss
+                    loss_out = loss.sum()
+                    
+            else:
+                inputs, labels = batch['image'].to(device), batch['labels'].to(device)
+
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                # print(outputs.shape, labels.shape)
+                loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none') # sigmoid + BCELoss
+            
+            hist.update_histogram(batch['labels'], outputs.sigmoid().detach().cpu().numpy())
+            loss_out = (loss_out * plm_mask).sum()
+            train_loss += loss_out.item()
+            loss_out.backward()
+            optimizer.step()
+        
+        divergence_difference = hist.divergence_difference()
+        ideal_positive_ratio *= np.exp(change_rate * divergence_difference)
+        hist.reset()
+        
+        scheduler.step()   
+
+        # Evaluate the model on the validation set
+        model.eval()
+        val_loss = 0.0
+        # correct_predictions = 0
+        # total_jaccard_index = 0.0
+        # total_samples = 0
+        auc_scores = []
+
+        with torch.no_grad():
+            all_preds = []
+            all_labels = []
+            all_preds_4 = []
+            all_labels_4 = []
+            all_preds_5 = []
+            all_labels_5 = []
+            for batch in val_loader:
+                if ctran_model:
+                    labels = batch['labels'].float()
+                    images = batch['image'].float()
+                    mask = batch['mask'].float()
+                    mask_in = mask.clone()
+                    unk_mask = custom_replace(mask,1,0,0)
+                    
+                    outputs,int_pred,attns = model(images.to(device),mask_in.to(device))
+                    
+                    loss = F.binary_cross_entropy_with_logits(outputs.view(labels.size(0),-1),labels.cuda(), reduction='none')
+                    loss_out = (unk_mask.cuda()*loss).sum()
+                else:
+                    inputs, labels = batch['image'].to(device), batch['labels'].to(device)
+                    outputs = model(inputs)
+                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
+                    
+                val_loss += loss_out.item()
+
+                # Calculate accuracy
+                ## method 1. Strictly Accuracy
+                # predicted_labels = (outputs > 0.5).float()
+                # correct_predictions += (predicted_labels == labels).all(dim=1).sum().item()
+                # total_samples += labels.size(0)
+                
+                ## method 2. Jaccard Accuracy
+                # predicted = (outputs > 0.5).bool()
+                # labels_bool = labels.bool()
+                # intersection = (predicted & labels_bool).float().sum(dim=1)
+                # union = (predicted | labels_bool).float().sum(dim=1)
+                # jaccard_index_per_example = intersection / union
+                # jaccard_index_per_example[union == 0] = 1.0
+                # total_jaccard_index += jaccard_index_per_example.sum().item()
+                # total_samples += labels.size(0)
+                
+                ## method 3. AUC
+                # outputs_np = F.sigmoid(outputs).cpu().numpy()
+                outputs_np = outputs.cpu().numpy()
+                labels_np = labels.cpu().numpy()
+                all_preds.extend(outputs_np)
+                all_labels.extend(labels_np)
+                
+                ## method 4. mAP
+                # all_preds_4.append(F.sigmoid(outputs).cpu())
+                all_preds_4.append(outputs.cpu())
+                all_labels_4.append(labels.cpu())
+                
+                ## method 5. F1 Score
+                # predicted = F.sigmoid(outputs).cpu() > 0.5
+                predicted = outputs.cpu() > 0.5
+                all_preds_5.append(predicted.numpy())
+                all_labels_5.append(labels.cpu().numpy())
+
+        current_val_loss = val_loss / len(val_loader)
+        if current_val_loss < best_val_loss:
+            best_val_loss = current_val_loss
+            best_model_state = copy.deepcopy(model.state_dict())
+        
+        if selected_data == 'original':
+            print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}')
+            continue
+        
+        ## method 1.
+        # accuracy = correct_predictions / total_samples
+        ## method 2.
+        # accuracy = total_jaccard_index / total_samples
+        ## method 3.
+        for i in range(labels_np.shape[1]):
+                label_specific_auc = roc_auc_score([label[i] for label in all_labels], [pred[i] for pred in all_preds])
+                auc_scores.append(label_specific_auc)
+        average_auc = sum(auc_scores) / len(auc_scores)
+        ## method 4. mAP
+        all_preds_4 = torch.cat(all_preds_4).numpy()
+        all_labels_4 = torch.cat(all_labels_4).numpy()
+        mAP = 0
+        for i in range(all_labels_4.shape[1]):
+            AP = average_precision_score(all_labels_4[:, i], all_preds_4[:, i])
+            mAP += AP
+
+        mAP /= all_labels_4.shape[1]
+        ## method 5. F1 Score
+        all_preds_5 = np.vstack(all_preds_5)
+        all_labels_5 = np.vstack(all_labels_5)
+        f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
+        
+        print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}')
+    return best_model_state
+
+
