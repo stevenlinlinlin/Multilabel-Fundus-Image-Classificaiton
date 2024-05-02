@@ -2,4 +2,5 @@ scikit-learn
 matplotlib
 pandas
 transformers
+opencv-contrib-python
 # imbalanced-learn
