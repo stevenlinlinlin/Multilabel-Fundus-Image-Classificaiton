@@ -30,7 +30,7 @@ from models.mydensenet import CustomDenseNet1, CustomDenseNet2, CustomDenseNet3,
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
 
-prefetch_factor = 256
+prefetch_factor = 64
 num_workers = 28
 batch_size = 16
 # RFMiD dataset
@@ -42,14 +42,14 @@ batch_size = 16
 selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
 # MuReD dataset
 num_classes = 20
-training_labels_path = 'data/fundus/MuReD/ros_train_data.csv'
+training_labels_path = 'data/fundus/MuReD/train_data.csv'
 evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
 training_images_dir = 'data/fundus/MuReD/images/images'
 evaluation_images_dir = 'data/fundus/MuReD/images/images'
-da_training_images_dir = 'data/fundus/MuReD/images/ros' # 'data/fundus/MuReD/images/xxxx' or None
+da_training_images_dir = None # 'data/fundus/MuReD/images/xxxx' or None
 
 # auc_fig_path = 'results/auc/densenet161.png'
-results_path = 'results/proposed-4_enhancement_ros.csv'
+results_path = 'results/proposed-4_1.csv'
 
 ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
@@ -212,20 +212,20 @@ def train(model, train_dataset, ctran_model=False):
                 # total_samples += labels.size(0)
                 
                 ## method 3. AUC
-                # outputs_np = F.sigmoid(outputs).cpu().numpy()
-                outputs_np = outputs.cpu().numpy()
+                outputs_np = F.sigmoid(outputs).cpu().numpy()
+                # outputs_np = outputs.cpu().numpy()
                 labels_np = labels.cpu().numpy()
                 all_preds.extend(outputs_np)
                 all_labels.extend(labels_np)
                 
                 ## method 4. mAP
-                # all_preds_4.append(F.sigmoid(outputs).cpu())
-                all_preds_4.append(outputs.cpu())
+                all_preds_4.append(F.sigmoid(outputs).cpu())
+                # all_preds_4.append(outputs.cpu())
                 all_labels_4.append(labels.cpu())
                 
                 ## method 5. F1 Score
-                # predicted = F.sigmoid(outputs).cpu() > 0.5
-                predicted = outputs.cpu() > 0.5
+                predicted = F.sigmoid(outputs).cpu() > 0.5
+                # predicted = outputs.cpu() > 0.5
                 all_preds_5.append(predicted.numpy())
                 all_labels_5.append(labels.cpu().numpy())
 
@@ -318,20 +318,20 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
             # total_samples += labels.size(0)
             
             ## method 3. AUC
-            # outputs_np = F.sigmoid(outputs).cpu().numpy()
-            outputs_np = outputs.cpu().numpy()
+            outputs_np = F.sigmoid(outputs).cpu().numpy()
+            # outputs_np = outputs.cpu().numpy()
             labels_np = labels.cpu().numpy()
             all_preds.extend(outputs_np)
             all_labels.extend(labels_np)
             
             ## method 4. mAP
-            # all_preds_4.append(F.sigmoid(outputs).cpu())
-            all_preds_4.append(outputs.cpu())
+            all_preds_4.append(F.sigmoid(outputs).cpu())
+            # all_preds_4.append(outputs.cpu())
             all_labels_4.append(labels.cpu())
             
             ## method 5. F1 Score
-            # predicted = F.sigmoid(outputs).cpu() > 0.5
-            predicted = outputs.cpu() > 0.5
+            predicted = F.sigmoid(outputs).cpu() > 0.5
+            # predicted = outputs.cpu() > 0.5
             all_preds_5.append(predicted.numpy())
             all_labels_5.append(labels.cpu().numpy())
 
@@ -341,6 +341,7 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
     ## method 2.
     # accuracy = total_jaccard_index / total_samples
     ## method 3.
+    # print(len(all_preds), all_preds[0].shape, labels_np.shape)
     for i in range(labels_np.shape[1]):
         # print(len(all_labels))
         # print([label[i] for label in all_labels], [pred[i] for pred in all_preds])
@@ -384,7 +385,7 @@ if __name__ == "__main__":
     print(f"===== Model: {model.__class__.__name__} =====")
     print("******************** Training   ********************")
     best_model_state = train(model, train_dataset, ctran_model=ctran_model)
-    # best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model)
+    # best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
     print("******************** Evaluation ********************")
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model)

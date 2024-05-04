@@ -11,6 +11,8 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import pandas as pd
 import csv
+from torch.optim.lr_scheduler import StepLR
+from tqdm import tqdm 
 
 from models.utils import custom_replace
 eps = np.finfo(float).eps
@@ -180,20 +182,20 @@ def train_kfold(model, train_dataset, ctran_model=False, batch_size=32, prefetch
                     # total_samples += labels.size(0)
                     
                     ## method 3. AUC
-                    # outputs_np = F.sigmoid(outputs).cpu().numpy()
-                    outputs_np = outputs.cpu().numpy()
+                    outputs_np = F.sigmoid(outputs).cpu().numpy()
+                    # outputs_np = outputs.cpu().numpy()
                     labels_np = labels.cpu().numpy()
                     all_preds.extend(outputs_np)
                     all_labels.extend(labels_np)
                     
                     ## method 4. mAP
-                    # all_preds_4.append(F.sigmoid(outputs).cpu())
-                    all_preds_4.append(outputs.cpu())
+                    all_preds_4.append(F.sigmoid(outputs).cpu())
+                    # all_preds_4.append(outputs.cpu())
                     all_labels_4.append(labels.cpu())
                     
                     ## method 5. F1 Score
-                    # predicted = F.sigmoid(outputs).cpu() > 0.5
-                    predicted = outputs.cpu() > 0.5
+                    predicted = F.sigmoid(outputs).cpu() > 0.5
+                    # predicted = outputs.cpu() > 0.5
                     all_preds_5.append(predicted.numpy())
                     all_labels_5.append(labels.cpu().numpy())
 
@@ -381,7 +383,7 @@ def kullback_leibler_divergence(p, q):
     return kl_div
 
 # train with Partial Label Masking
-def train_plm(model, train_dataset, ctran_model=False):
+def train_plm(model, train_dataset, ctran_model=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
     print(f"[Training with Partial Label Masking]")
     num_epochs = 35
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
@@ -504,20 +506,20 @@ def train_plm(model, train_dataset, ctran_model=False):
                 # total_samples += labels.size(0)
                 
                 ## method 3. AUC
-                # outputs_np = F.sigmoid(outputs).cpu().numpy()
-                outputs_np = outputs.cpu().numpy()
+                outputs_np = F.sigmoid(outputs).cpu().numpy()
+                # outputs_np = outputs.cpu().numpy()
                 labels_np = labels.cpu().numpy()
                 all_preds.extend(outputs_np)
                 all_labels.extend(labels_np)
                 
                 ## method 4. mAP
-                # all_preds_4.append(F.sigmoid(outputs).cpu())
-                all_preds_4.append(outputs.cpu())
+                all_preds_4.append(F.sigmoid(outputs).cpu())
+                # all_preds_4.append(outputs.cpu())
                 all_labels_4.append(labels.cpu())
                 
                 ## method 5. F1 Score
-                # predicted = F.sigmoid(outputs).cpu() > 0.5
-                predicted = outputs.cpu() > 0.5
+                predicted = F.sigmoid(outputs).cpu() > 0.5
+                # predicted = outputs.cpu() > 0.5
                 all_preds_5.append(predicted.numpy())
                 all_labels_5.append(labels.cpu().numpy())
 
@@ -526,9 +528,9 @@ def train_plm(model, train_dataset, ctran_model=False):
             best_val_loss = current_val_loss
             best_model_state = copy.deepcopy(model.state_dict())
         
-        if selected_data == 'original':
-            print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}')
-            continue
+        # if selected_data == 'original':
+        #     print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}')
+        #     continue
         
         ## method 1.
         # accuracy = correct_predictions / total_samples

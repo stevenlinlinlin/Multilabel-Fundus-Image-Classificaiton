@@ -84,10 +84,11 @@ def image_loader(path,transform):
         # print('FILE NOT FOUND')
         time.sleep(10)
         image = cv2.imread(path)
-
+        
+    image = Image.fromarray(image)
     # image = image.convert('RGB')
     # image = fov_extractor(np.array(image))
-    image = enhance_image(image, 5, 0.01 * 255 * 255, 5)
+    # image = enhance_image(image, 5, 0.01 * 255 * 255, 5)
     
     if transform is not None:
         image = transform(image)
