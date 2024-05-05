@@ -46,10 +46,10 @@ training_labels_path = 'data/fundus/MuReD/train_data.csv'
 evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
 training_images_dir = 'data/fundus/MuReD/images/images'
 evaluation_images_dir = 'data/fundus/MuReD/images/images'
-da_training_images_dir = None # 'data/fundus/MuReD/images/xxxx' or None
+da_training_images_dir = 'data/fundus/MuReD/images/ros' # 'data/fundus/MuReD/images/xxxx' or None
 
 # auc_fig_path = 'results/auc/densenet161.png'
-results_path = 'results/proposed-4_1.csv'
+results_path = 'results/proposed-4_plm_1.csv'
 
 ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
@@ -62,6 +62,7 @@ loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss r
 # ])
 #### For CNN
 transform = transforms.Compose([
+    transforms.ToPILImage(),
     # Resize
     # transforms.Resize(232), # ResNet50/ResNet152
     transforms.Resize(256),   # DenseNet169/161, MobileNetV2
@@ -384,8 +385,8 @@ if __name__ == "__main__":
     model = get_model()
     print(f"===== Model: {model.__class__.__name__} =====")
     print("******************** Training   ********************")
-    best_model_state = train(model, train_dataset, ctran_model=ctran_model)
-    # best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
+    # best_model_state = train(model, train_dataset, ctran_model=ctran_model)
+    best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
     print("******************** Evaluation ********************")
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model)

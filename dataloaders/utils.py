@@ -32,7 +32,7 @@ def fov_extractor(image):
     cv2.drawContours(mask, [c], -1, 255, thickness=cv2.FILLED)
     result = cv2.bitwise_and(image, image, mask=mask)
     result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
-    return Image.fromarray(result)
+    return result
     
     # Method 2: Using intensity profile
     # # Step 1: Convert to red channel and find image dimensions
@@ -61,7 +61,7 @@ def fov_extractor(image):
 
     #     # Step 5: Crop the FOV based on found coordinates
     #     fov_image = image[Y1:Y2, X1:X2]
-    #     return Image.fromarray(fov_image)
+    #     return fov_image
     # else:
     #     print("No valid transitions found")
     #     return None  # In case no valid transitions are found
@@ -73,9 +73,9 @@ def enhance_image(image, r, eps, enhancement_factor):
     # Calculate the detail image
     detail = image - smoothed
     # Enhance the image
-    enhanced = image + enhancement_factor * detail
+    enhanced = smoothed + enhancement_factor * detail
     enhanced = np.clip(enhanced, 0, 255).astype(np.uint8)
-    return Image.fromarray(enhanced)
+    return enhanced
 
 def image_loader(path,transform):
     try:
@@ -85,8 +85,6 @@ def image_loader(path,transform):
         time.sleep(10)
         image = cv2.imread(path)
         
-    image = Image.fromarray(image)
-    # image = image.convert('RGB')
     # image = fov_extractor(np.array(image))
     # image = enhance_image(image, 5, 0.01 * 255 * 255, 5)
     
