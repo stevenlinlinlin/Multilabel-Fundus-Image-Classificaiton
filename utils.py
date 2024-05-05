@@ -236,12 +236,11 @@ def get_positive_ratio(dataset) -> np.ndarray:
     n_samples = len(y)
     n_positives = np.sum(y > 0, axis=0)
     positive_ratio = n_positives / n_samples
+    # print(f"Positive ratio: {positive_ratio}")
     return positive_ratio
-
 
 def get_y_true(dataset):
     y = list(map(lambda x: x['labels'], dataset))
-    # print(y)
     return np.concatenate(y, axis=0)
 
 class RandomMultiHotGenerator:
