@@ -55,28 +55,39 @@ ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
 
 # Data transforms
+## Transformations adapted for the dataset
+transform = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.Resize((384, 384)),
+    transforms.RandomHorizontalFlip(),
+    # transforms.RandomVerticalFlip(),
+    transforms.RandomRotation(45),
+    # transforms.RandomAffine(0, translate=(0.1, 0.1)),
+    transforms.ToTensor(),
+])
+## Transformations from the original paper
 #### For ViT
 # transform = transforms.Compose([
 #     transforms.Resize((224, 224)),
 #     transforms.ToTensor(),
 # ])
-#### For CNN
-transform = transforms.Compose([
-    transforms.ToPILImage(),
-    # Resize
-    # transforms.Resize(232), # ResNet50/ResNet152
-    transforms.Resize(256),   # DenseNet169/161, MobileNetV2
-    # transforms.Resize(320),   # EfficientNet B3
-    # transforms.Resize(342),   # InceptionV3
+#### For CNN 
+# transform = transforms.Compose([
+#     transforms.ToPILImage(),
+#     # Resize
+#     # transforms.Resize(232), # ResNet50/ResNet152
+#     transforms.Resize(256),   # DenseNet169/161, MobileNetV2
+#     # transforms.Resize(320),   # EfficientNet B3
+#     # transforms.Resize(342),   # InceptionV3
     
-    # CenterCrop
-    transforms.CenterCrop(224),
-    # transforms.CenterCrop(299), # InceptionV3 
-    # transforms.CenterCrop(300), # EfficientNet B3
+#     # CenterCrop
+#     transforms.CenterCrop(224),
+#     # transforms.CenterCrop(299), # InceptionV3 
+#     # transforms.CenterCrop(300), # EfficientNet B3
     
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
+#     transforms.ToTensor(),
+#     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+# ])
 
 # Models
 def get_model():
