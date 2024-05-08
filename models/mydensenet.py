@@ -150,6 +150,7 @@ class CustomDenseNet4(nn.Module):
         
         self.conv1.apply(weights_init)
         self.conv2.apply(weights_init)
+        self.conv1x1.apply(weights_init)
         
     def forward(self, x):
         x = self.features(x)
