@@ -57,7 +57,7 @@ def plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path):
     plt.savefig(auc_fig_path)
     
 def result2csv(results_path, evaluation_labels_path, precision_list, recall_list, f1_list, ap_list, auc_list):
-    print(f"Writing all label results to {results_path}")
+    print(f"[Writing all label results to {results_path}]")
     class_names = pd.read_csv(evaluation_labels_path).columns.tolist()[1:]
     with open(results_path, 'w', newline='') as file:
         writer = csv.writer(file)
