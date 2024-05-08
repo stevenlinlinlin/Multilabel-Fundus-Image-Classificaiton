@@ -78,7 +78,7 @@ def result2csv(results_path, evaluation_labels_path, precision_list, recall_list
         avg_auc = sum(auc_list) / len(auc_list)
         
         writer.writerow([
-            "Average",
+            f"Average".ljust(8),
             f"{avg_precision:.3f}".ljust(8),
             f"{avg_recall:.3f}".ljust(8),
             f"{avg_f1:.3f}".ljust(8),
