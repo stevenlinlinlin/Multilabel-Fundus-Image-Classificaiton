@@ -70,6 +70,21 @@ def result2csv(results_path, evaluation_labels_path, precision_list, recall_list
             formatted_ap = f"{ap:.3f}".ljust(8)
             formatted_auc = f"{auc:.3f}".ljust(8)
             writer.writerow([formatted_class_name, formatted_precision, formatted_recall, formatted_f1, formatted_ap, formatted_auc])
+            
+        avg_precision = sum(precision_list) / len(precision_list)
+        avg_recall = sum(recall_list) / len(recall_list)
+        avg_f1 = sum(f1_list) / len(f1_list)
+        avg_ap = sum(ap_list) / len(ap_list)
+        avg_auc = sum(auc_list) / len(auc_list)
+        
+        writer.writerow([
+            "Average",
+            f"{avg_precision:.3f}".ljust(8),
+            f"{avg_recall:.3f}".ljust(8),
+            f"{avg_f1:.3f}".ljust(8),
+            f"{avg_ap:.3f}".ljust(8),
+            f"{avg_auc:.3f}".ljust(8)
+        ])
 
 # Kfold cross validation (k=5)
 def train_kfold(model, train_dataset, ctran_model=False, batch_size=32, prefetch_factor=2, num_workers=4, device='cuda', loss_labels='unk'):
