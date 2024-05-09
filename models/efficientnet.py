@@ -19,13 +19,22 @@ class EfficientNetB5(nn.Module):
         super(EfficientNetB5, self).__init__()
         efficientnetb5 = models.efficientnet_b5(weights='DEFAULT')
         # efficientnetb3.classifier.in_features # 2048
-        efficientnetb5.classifier = nn.Sequential(
-            nn.Dropout(0.2),
-            nn.Linear(2048, 512),
-            nn.ReLU(),
-            nn.Linear(512, num_classes),
-        )
+        efficientnetb5.classifier = nn.Linear(2048, num_classes)
+        efficientnetb5.classifier.apply(weights_init)
         self.model = efficientnetb5
+
+    def forward(self, x):
+        return self.model(x)
+    
+    
+class EfficientNetB7(nn.Module):
+    def __init__(self, num_classes):
+        super(EfficientNetB7, self).__init__()
+        efficientnetb7 = models.efficientnet_b7(weights='DEFAULT')
+        # efficientnetb7.classifier.in_features # 2560
+        efficientnetb7.classifier = nn.Linear(2560, num_classes)
+        efficientnetb7.classifier.apply(weights_init)
+        self.model = efficientnetb7
 
     def forward(self, x):
         return self.model(x)
