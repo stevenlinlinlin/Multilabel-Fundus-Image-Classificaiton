@@ -1,11 +1,13 @@
 import torch.nn as nn
 import torchvision.models as models
+import timm
 from models.utils import weights_init
 
 class ConvNeXt(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
-        self.convnext = models.convnext_large(weights='DEFAULT')
+         # self.convnext = models.convnext_large(weights='DEFAULT')
+        self.convnext = timm.create_model('convnextv2_large', pretrained=True)
         self.convnext.classifier = nn.Sequential(
             nn.LayerNorm([1536,1,1], elementwise_affine=True),
             nn.Flatten(start_dim=1,end_dim=-1),
