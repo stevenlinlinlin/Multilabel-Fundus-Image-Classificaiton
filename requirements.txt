@@ -4,3 +4,4 @@ pandas
 transformers
 opencv-contrib-python
 # imbalanced-learn
+timm
