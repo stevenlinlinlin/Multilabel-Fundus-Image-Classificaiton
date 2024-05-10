@@ -20,12 +20,14 @@ from dataloaders.multilabel_dataset import MultilabelDataset
 from models.resnet import ResNet50, ResNet152
 from models.densenet import DenseNet169, DenseNet161
 from models.mobilenet import MobileNetV2
-from models.efficientnet import EfficientNetB3, EfficientNetB5
+from models.efficientnet import EfficientNetB3, EfficientNetB5, EfficientNetB7
 from models.inception import InceptionV3
 from models.vit import ViTForMultiLabelClassification
 from models.ctran import CTranModel
 from models.utils import custom_replace
-from models.mydensenet import CustomDenseNet1, CustomDenseNet2, CustomDenseNet3, CustomDenseNet4
+from models.swin_transformer import SwinTransformer
+from models.convnext import ConvNeXt
+from models.mydensenet import CustomDenseNet1, CustomDenseNet2, CustomDenseNet3, CustomDenseNet4, CustomDenseNet5
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
@@ -49,7 +51,7 @@ evaluation_images_dir = 'data/fundus/MuReD/images/images'
 da_training_images_dir = 'data/fundus/MuReD/images/ros' # 'data/fundus/MuReD/images/xxxx' or None
 
 # auc_fig_path = 'results/auc/densenet161.png'
-results_path = 'results/proposed-4_plm_1.csv'
+results_path = 'results/densenet161_90.csv'
 
 ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
@@ -58,10 +60,10 @@ loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss r
 ## Transformations adapted for the dataset
 transform = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((384, 384)),
+    transforms.Resize((224, 224)),
     transforms.RandomHorizontalFlip(),
-    # transforms.RandomVerticalFlip(),
-    transforms.RandomRotation(45),
+    transforms.RandomVerticalFlip(),
+    transforms.RandomRotation(90),
     # transforms.RandomAffine(0, translate=(0.1, 0.1)),
     transforms.ToTensor(),
 ])
@@ -92,13 +94,15 @@ transform = transforms.Compose([
 # Models
 def get_model():
     # model = ResNet152(num_classes).to(device)
-    # model = DenseNet161(num_classes).to(device)
+    model = DenseNet161(num_classes).to(device)
     # model = MobileNetV2(num_classes).to(device)
     # model = EfficientNetB3(num_classes).to(device)
     # model = InceptionV3(num_classes).to(device)
     # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
     # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
-    model = CustomDenseNet4(num_classes).to(device)
+    # model = SwinTransformer(num_classes=num_classes).to(device)
+    # model = ConvNeXt(num_classes=num_classes).to(device)
+    # model = CustomDenseNet5(num_classes).to(device)
     
     return model
 
@@ -396,8 +400,8 @@ if __name__ == "__main__":
     model = get_model()
     print(f"===== Model: {model.__class__.__name__} =====")
     print("******************** Training   ********************")
-    # best_model_state = train(model, train_dataset, ctran_model=ctran_model)
-    best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
+    best_model_state = train(model, train_dataset, ctran_model=ctran_model)
+    # best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
     print("******************** Evaluation ********************")
     evaluate(model, best_model_state, test_loader, ctran_model=ctran_model)
