@@ -27,7 +27,7 @@ from models.ctran import CTranModel
 from models.utils import custom_replace
 from models.swin_transformer import SwinTransformer
 from models.convnext import ConvNeXt
-from models.mydensenet import CustomDenseNet1, CustomDenseNet2, CustomDenseNet3, CustomDenseNet4, CustomDenseNet5
+from models.mydensenet import myDenseNet1, myDenseNet2, myDenseNet3, myDenseNet4, myDenseNet5
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
@@ -102,7 +102,7 @@ def get_model():
     # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
     # model = SwinTransformer(num_classes=num_classes).to(device)
     # model = ConvNeXt(num_classes=num_classes).to(device)
-    # model = CustomDenseNet5(num_classes).to(device)
+    # model = myDenseNet4(num_classes).to(device)
     
     return model
 

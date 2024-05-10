@@ -4,9 +4,9 @@ import torchvision.models as models
 from models.utils import weights_init
 from models.transformerencoder import SelfAttnLayer
 
-class CustomDenseNet1(nn.Module):
+class myDenseNet1(nn.Module):
     def __init__(self, num_classes):
-        super(CustomDenseNet1, self).__init__()
+        super(myDenseNet1, self).__init__()
         self.features = models.densenet161(weights='DEFAULT').features
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
         # self.classifier = nn.Linear(5472, num_classes)
@@ -36,9 +36,45 @@ class CustomDenseNet1(nn.Module):
         return x
     
 
-class CustomDenseNet2(nn.Module):
+class myDenseNet2(nn.Module):
     def __init__(self, num_classes):
-        super(CustomDenseNet2, self).__init__()
+        super(myDenseNet2, self).__init__()
+        self.features = models.densenet161(weights='DEFAULT').features
+        self.conv1x1 = nn.Conv2d(2208, num_classes, kernel_size=1)
+        self.conv1 = nn.Conv2d(2208, 552, kernel_size=1)
+        self.conv2 = nn.Conv2d(552, num_classes, kernel_size=1)
+        self.bn1 = nn.BatchNorm2d(num_features=2208)
+        self.bn2 = nn.BatchNorm2d(num_features=num_classes)
+        self.to_features = nn.Flatten(start_dim=2)
+        self.attention = nn.MultiheadAttention(embed_dim=num_classes, num_heads=1, dropout=0.1, batch_first=True)
+        self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
+        self.layer_norm = nn.LayerNorm(num_classes)
+        self.classifier = nn.Linear(2208, num_classes)
+        
+        self.conv1.apply(weights_init)
+        self.conv2.apply(weights_init)
+        self.conv1x1.apply(weights_init)
+        
+    def forward(self, x):
+        x = self.features(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.conv1x1(x)
+        # x = self.conv1(x)
+        # x = self.relu(x)
+        # x = self.dropout(x)
+        # x = self.conv2(x)
+        # x = self.bn2(x)
+        x = self.gap(x)
+        x = x.view(x.size(0), -1)
+        return x
+
+
+class myDenseNet3(nn.Module):
+    def __init__(self, num_classes):
+        super(myDenseNet3, self).__init__()
         self.features = models.densenet161(weights='DEFAULT').features
         self.conv = nn.Conv2d(2208, 28, kernel_size=1)
         self.bn = nn.BatchNorm2d(num_features=2208)
@@ -56,7 +92,7 @@ class CustomDenseNet2(nn.Module):
             nn.Dropout(0.5),
             nn.Linear(512, num_classes),
         )
-        self.dropout = nn.Dropout(0.5)
+        # self.dropout = nn.Dropout(0.5)
         # self.relu = nn.ReLU()
         # self.classifier = nn.Linear(49, num_classes)
         
@@ -78,9 +114,9 @@ class CustomDenseNet2(nn.Module):
         return x
     
     
-class CustomDenseNet3(nn.Module):
+class myDenseNet4(nn.Module):
     def __init__(self, num_classes):
-        super(CustomDenseNet3, self).__init__()
+        super(myDenseNet4, self).__init__()
         self.features = models.densenet161(weights='DEFAULT').features
         self.bn = nn.BatchNorm2d(num_features=2208)
         self.to_features = nn.Flatten(start_dim=2)
@@ -130,74 +166,40 @@ class CustomDenseNet3(nn.Module):
         x = self.classifier(x[:, 0, :])
         return x
     
-
-class CustomDenseNet4(nn.Module):
-    def __init__(self, num_classes):
-        super(CustomDenseNet4, self).__init__()
-        self.features = models.densenet161(weights='DEFAULT').features
-        self.conv1x1 = nn.Conv2d(2208, num_classes, kernel_size=1)
-        self.conv1 = nn.Conv2d(2208, 552, kernel_size=1)
-        self.conv2 = nn.Conv2d(552, num_classes, kernel_size=1)
-        self.bn1 = nn.BatchNorm2d(num_features=2208)
-        self.bn2 = nn.BatchNorm2d(num_features=num_classes)
-        self.to_features = nn.Flatten(start_dim=2)
-        self.attention = nn.MultiheadAttention(embed_dim=num_classes, num_heads=1, dropout=0.1, batch_first=True)
-        self.gap = nn.AdaptiveAvgPool2d((1, 1))
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.5)
-        self.layer_norm = nn.LayerNorm(num_classes)
-        self.classifier = nn.Linear(2208, num_classes)
-        
-        self.conv1.apply(weights_init)
-        self.conv2.apply(weights_init)
-        self.conv1x1.apply(weights_init)
-        
-    def forward(self, x):
-        x = self.features(x)
-        # x = self.bn1(x)
-        # x = self.relu(x)
-        x = self.conv1x1(x)
-        # x = self.conv1(x)
-        # x = self.relu(x)
-        # x = self.dropout(x)
-        # x = self.conv2(x)
-        # x = self.bn2(x)
-        x = self.gap(x)
-        x = x.view(x.size(0), -1)
-        return x
     
-    
-class CustomDenseNet5(nn.Module):
-    def __init__(self, num_classes):
-        super(CustomDenseNet5, self).__init__()
-        self.features = models.densenet161(weights='DEFAULT').features
-        self.conv1x1 = nn.Conv2d(2208, num_classes, kernel_size=1)
-        self.conv1 = nn.Conv2d(2208, 552, kernel_size=1)
-        self.conv2 = nn.Conv2d(552, num_classes, kernel_size=1)
-        self.bn1 = nn.BatchNorm2d(num_features=2208)
-        self.bn2 = nn.BatchNorm2d(num_features=num_classes)
-        self.to_features = nn.Flatten(start_dim=2)
-        self.attention = nn.MultiheadAttention(embed_dim=49, num_heads=1, dropout=0.1, batch_first=True)
-        self.gap = nn.AdaptiveAvgPool2d((1, 1))
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.5)
-        self.layer_norm = nn.LayerNorm(num_classes)
-        self.classifier = nn.Linear(49, 1)
+# class CustomDenseNet5(nn.Module):
+#     def __init__(self, num_classes):
+#         super(CustomDenseNet5, self).__init__()
+#         self.features = models.densenet161(weights='DEFAULT').features
+#         self.conv1x1 = nn.Conv2d(2208, num_classes, kernel_size=1)
+#         self.conv1 = nn.Conv2d(2208, 552, kernel_size=1)
+#         self.conv2 = nn.Conv2d(552, num_classes, kernel_size=1)
+#         self.bn1 = nn.BatchNorm2d(num_features=2208)
+#         self.bn2 = nn.BatchNorm2d(num_features=num_classes)
+#         self.to_features = nn.Flatten(start_dim=2)
+#         self.attention = nn.MultiheadAttention(embed_dim=20, num_heads=1, dropout=0.1, batch_first=True)
+#         self.gap = nn.AdaptiveAvgPool2d((1, 1))
+#         self.relu = nn.ReLU()
+#         self.dropout = nn.Dropout(0.5)
+#         self.layer_norm = nn.LayerNorm(num_classes)
+#         self.classifier = nn.Linear(256, num_classes)
         
-        self.conv1.apply(weights_init)
-        self.conv2.apply(weights_init)
-        self.conv1x1.apply(weights_init)
+#         self.conv1.apply(weights_init)
+#         self.conv2.apply(weights_init)
+#         self.conv1x1.apply(weights_init)
+#         self.classifier.apply(weights_init)
         
-    def forward(self, x):
-        x = self.features(x)
-        # x = self.bn1(x)
-        # x = self.relu(x)
-        # print(x.shape)
-        x = self.conv1x1(x)
-        # print(x.shape)
-        x = self.to_features(x)
-        x,_ = self.attention(x,x,x)
-        x = self.classifier(x)
-        print(x.shape)
-        x = x.view(x.size(0), -1)
-        return x
+#     def forward(self, x):
+#         x = self.features(x)
+#         # x = self.bn1(x)
+#         # x = self.relu(x)
+#         # print(x.shape)
+#         x = self.conv1x1(x)
+#         # print(x.shape)
+#         x = self.to_features(x)
+#         x = x.permute(0, 2, 1)
+#         x, _ = self.attention(x, x, x)
+#         x = x.permute(0, 2, 1)
+#         x = torch.mean(x, dim=2)
+#         # x = self.classifier(x)
+#         return x
