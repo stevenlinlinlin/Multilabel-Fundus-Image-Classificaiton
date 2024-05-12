@@ -136,10 +136,10 @@ def get_dataset():
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, train_dataset, ctran_model=False):    
-    num_epochs = 35
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
-    # optimizer = optim.Adam(model.parameters(), lr=0.00001)
+def train(model, train_dataset, learning_rate, ctran_model=False):
+    num_epochs = 1
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    # optimizer = optim.Adam(model.parameters(), lr=0.00001) # c-tran
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
     # torch.manual_seed(13)
@@ -411,6 +411,7 @@ def parse_arguments():
     parser.add_argument('--model', type=str)
     parser.add_argument('--save_results_path', type=str)
     parser.add_argument('--ctran_model', action='store_true')
+    parser.add_argument('--lr', type=float, default=0.0001)
     # parser.add_argument()
     args = parser.parse_args()
     return args
@@ -422,7 +423,7 @@ if __name__ == "__main__":
     model = get_model(args.model)
     print(f"===== Model: {model.__class__.__name__} =====")
     print("******************** Training   ********************")
-    best_model_state = train(model, train_dataset, ctran_model=args.ctran_model)
+    best_model_state = train(model, train_dataset, args.lr,ctran_model=args.ctran_model)
     # best_model_state = train_plm(model, train_dataset, ctran_model=args.ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, ctran_model=args.ctran_model)
     print("******************** Evaluation ********************")
