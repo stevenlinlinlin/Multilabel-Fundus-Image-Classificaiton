@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import math
 import torch
@@ -27,7 +28,7 @@ from models.ctran import CTranModel
 from models.utils import custom_replace
 from models.swin_transformer import SwinTransformer
 from models.convnext import ConvNeXt
-from models.mydensenet import myDenseNet1, myDenseNet2, myDenseNet3, myDenseNet4, myDenseNet5
+from models.mydensenet import myDenseNet1, myDenseNet2, myDenseNet3, myDenseNet4
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
@@ -51,9 +52,9 @@ evaluation_images_dir = 'data/fundus/MuReD/images/images'
 da_training_images_dir = 'data/fundus/MuReD/images/ros' # 'data/fundus/MuReD/images/xxxx' or None
 
 # auc_fig_path = 'results/auc/densenet161.png'
-results_path = 'results/densenet161_90.csv'
+# results_path = 'results/densenet161_90.csv'
 
-ctran_model = False # True for CTran, False for CNN
+# ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
 
 # Data transforms
@@ -92,17 +93,27 @@ transform = transforms.Compose([
 # ])
 
 # Models
-def get_model():
-    # model = ResNet152(num_classes).to(device)
-    model = DenseNet161(num_classes).to(device)
-    # model = MobileNetV2(num_classes).to(device)
-    # model = EfficientNetB3(num_classes).to(device)
-    # model = InceptionV3(num_classes).to(device)
-    # model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
-    # model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
-    # model = SwinTransformer(num_classes=num_classes).to(device)
-    # model = ConvNeXt(num_classes=num_classes).to(device)
-    # model = myDenseNet4(num_classes).to(device)
+def get_model(model_name):
+    if model_name == 'resnet':
+        model = ResNet152(num_classes).to(device)
+    elif model_name == 'densenet':
+        model = DenseNet161(num_classes).to(device)
+    elif model_name == 'mobilenet':
+        model = MobileNetV2(num_classes).to(device)
+    elif model_name == 'efficientnet':
+        model = EfficientNetB3(num_classes).to(device)
+    elif model_name == 'inception':
+        model = InceptionV3(num_classes).to(device)
+    elif model_name == 'vit':
+        model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
+    elif model_name == 'ctran':
+        model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
+    elif model_name == 'swin':
+        model = SwinTransformer(num_classes=num_classes).to(device)
+    elif model_name == 'convnext':
+        model = ConvNeXt(num_classes=num_classes).to(device)
+    elif model_name == 'mydensenet4':
+        model = myDenseNet4(num_classes).to(device)
     
     return model
 
@@ -282,7 +293,7 @@ def train(model, train_dataset, ctran_model=False):
 
 
 # Evaluate the model on the test set
-def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model=False):
+def evaluate(model, best_model_state, test_loader, results_path, ctran_model=False, best_model=False):
     if best_model:
         print("------ Best model evaluation -----")
         model.load_state_dict(best_model_state)
@@ -395,14 +406,25 @@ def evaluate(model, best_model_state, test_loader, ctran_model=False, best_model
     # plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path)
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model', type=str)
+    parser.add_argument('--save_results_path', type=str)
+    parser.add_argument('--ctran_model', action='store_true')
+    # parser.add_argument()
+    args = parser.parse_args()
+    return args
+
+
 if __name__ == "__main__":
+    args = parse_arguments()
     train_dataset, test_dataset, test_loader = get_dataset()
-    model = get_model()
+    model = get_model(args.model)
     print(f"===== Model: {model.__class__.__name__} =====")
     print("******************** Training   ********************")
-    best_model_state = train(model, train_dataset, ctran_model=ctran_model)
-    # best_model_state = train_plm(model, train_dataset, ctran_model=ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
-    # best_model_state = train_kfold(model, train_dataset, ctran_model=ctran_model)
+    best_model_state = train(model, train_dataset, ctran_model=args.ctran_model)
+    # best_model_state = train_plm(model, train_dataset, ctran_model=args.ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
+    # best_model_state = train_kfold(model, train_dataset, ctran_model=args.ctran_model)
     print("******************** Evaluation ********************")
-    evaluate(model, best_model_state, test_loader, ctran_model=ctran_model)
-    # evaluate(model, best_model_state, test_loader, ctran_model=ctran_model, best_model =True)
+    evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model)
+    # evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model, best_model =True)
