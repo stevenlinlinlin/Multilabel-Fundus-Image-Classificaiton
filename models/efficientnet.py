@@ -32,7 +32,11 @@ class EfficientNetB7(nn.Module):
         super(EfficientNetB7, self).__init__()
         efficientnetb7 = models.efficientnet_b7(weights='DEFAULT')
         # efficientnetb7.classifier.in_features # 2560
-        efficientnetb7.classifier = nn.Linear(2560, num_classes)
+        # efficientnetb7.classifier = nn.Linear(2560, num_classes)
+        efficientnetb7.classifier = nn.Sequential(
+            nn.Dropout(p=0.5),
+            nn.Linear(2560, num_classes)
+        )
         efficientnetb7.classifier.apply(weights_init)
         self.model = efficientnetb7
 
