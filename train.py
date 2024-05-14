@@ -65,6 +65,7 @@ transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
     transforms.RandomRotation(90),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
     # transforms.RandomAffine(0, translate=(0.1, 0.1)),
     transforms.ToTensor(),
 ])
