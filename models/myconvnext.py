@@ -11,9 +11,9 @@ class ConvNeXtTransformer(nn.Module):
         self.features = timm.create_model('convnextv2_large.fcmae_ft_in22k_in1k_384', pretrained=True, num_classes=0)
         self.flatten = nn.Flatten(start_dim=2, end_dim=-1)
         d_model = 1536
+        self.layer_norm = nn.LayerNorm(d_model)
         encoder_layers = TransformerEncoderLayer(d_model, nhead, dim_feedforward, batch_first=True)
-        self.transformer_encoder = TransformerEncoder(encoder_layers, num_transformer_layers)
-        self.layer_norm = nn.LayerNorm(1536)
+        self.transformer_encoder = TransformerEncoder(encoder_layers, num_transformer_layers, norm=nn.LayerNorm(d_model), enable_nested_tensor=False)
         self.head = nn.Linear(d_model, num_classes)
         
     def forward(self, x):
