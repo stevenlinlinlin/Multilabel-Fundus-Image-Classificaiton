@@ -87,7 +87,7 @@ def result2csv(results_path, evaluation_labels_path, precision_list, recall_list
         ])
 
 # Kfold cross validation (k=5)
-def train_kfold(model, train_dataset, ctran_model=False, batch_size=32, prefetch_factor=2, num_workers=4, device='cuda', loss_labels='unk'):
+def train_kfold(model, train_dataset, learning_rate, ctran_model=False, batch_size=32, prefetch_factor=2, num_workers=4, device='cuda', loss_labels='unk'):
     print(f"[Training with KFold cross validation]")
     num_epochs = 10
     best_val_loss = float('inf')
@@ -103,9 +103,9 @@ def train_kfold(model, train_dataset, ctran_model=False, batch_size=32, prefetch
         val_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=val_sampler, prefetch_factor=prefetch_factor, num_workers=num_workers)
         
         if ctran_model:
-            optimizer = optim.Adam(model.parameters(), lr=0.00001)
+            optimizer = optim.Adam(model.parameters(), lr=learning_rate)
         else:
-            optimizer = optim.Adam(model.parameters(), lr=0.0001)
+            optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     
         model.apply(reset_weights)
         
@@ -398,10 +398,10 @@ def kullback_leibler_divergence(p, q):
     return kl_div
 
 # train with Partial Label Masking
-def train_plm(model, train_dataset, ctran_model=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
+def train_plm(model, train_dataset, learning_rate, ctran_model=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
     print(f"[Training with Partial Label Masking]")
     num_epochs = 35
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
     # torch.manual_seed(13)
