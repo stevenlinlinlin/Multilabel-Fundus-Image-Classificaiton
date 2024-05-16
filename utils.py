@@ -411,7 +411,7 @@ def kullback_leibler_divergence(p, q):
 def train_plm(model, train_dataset, learning_rate, ctran_model=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
     print(f"[Training with Partial Label Masking]")
     num_epochs = 35
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)#, weight_decay=0.01) # for transformers
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
     # torch.manual_seed(13)
