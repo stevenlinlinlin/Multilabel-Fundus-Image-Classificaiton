@@ -17,6 +17,15 @@ from tqdm import tqdm
 from models.utils import custom_replace
 eps = np.finfo(float).eps
 
+def count_labels(dataset, num_classes):
+    label_counts = defaultdict(int)
+    for data in dataset:
+        labels = data['labels']
+        for label in range(num_classes):
+            if labels[label] == 1:
+                label_counts[label] += 1
+    return label_counts
+
 def reset_weights(m):
   '''
     Try resetting model weights to avoid
@@ -415,7 +424,7 @@ def train_plm(model, train_dataset, learning_rate, ctran_model=False, num_classe
     change_rate = 1e-1
     positive_ratio = get_positive_ratio(train_loader).astype(np.float32)
     ideal_positive_ratio = copy.deepcopy(positive_ratio)
-    hist = ProbabilityHistograms(n_classes=num_classes, n_bins=5)
+    hist = ProbabilityHistograms(n_classes=num_classes, n_bins=4)
     mask_generator = MaskGenerator(
         generator=RandomMultiHotGenerator(seed=146)
     )
