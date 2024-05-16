@@ -152,12 +152,12 @@ def train(model, train_dataset, learning_rate, ctran_model=False):
     train_size = total_size - val_size
     train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(146))
     
-    train_label_counts = count_labels(train_dataset, num_classes)
-    val_label_counts = count_labels(val_dataset, num_classes)
-    sorted_train_label_counts = dict(sorted(train_label_counts.items()))
-    sorted_val_label_counts = dict(sorted(val_label_counts.items()))
-    print("Train Label Counts:     ", sorted_train_label_counts)
-    print("Validation Label Counts:", sorted_val_label_counts)
+    # train_label_counts = count_labels(train_dataset, num_classes)
+    # val_label_counts = count_labels(val_dataset, num_classes)
+    # sorted_train_label_counts = dict(sorted(train_label_counts.items()))
+    # sorted_val_label_counts = dict(sorted(val_label_counts.items()))
+    # print("Train Label Counts:     ", sorted_train_label_counts)
+    # print("Validation Label Counts:", sorted_val_label_counts)
     
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
@@ -411,10 +411,17 @@ def evaluate(model, best_model_state, test_loader, results_path, ctran_model=Fal
     all_preds_5 = np.vstack(all_preds_5)
     all_labels_5 = np.vstack(all_labels_5)
     f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
-    f1_list = f1_score(all_labels_5, all_preds_5, average=None)
-
-    # result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
-    print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
+    f1_list = list(f1_score(all_labels_5, all_preds_5, average=None))
+    result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
+    # print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
+    normal_auc = auc_scores.pop(1)
+    average_auc = sum(auc_scores) / len(auc_scores)
+    normal_f1 = f1_list.pop(1)
+    f1_macro = sum(f1_list) / len(f1_list)
+    mAP_per_label.pop(1)
+    mAP = sum(mAP_per_label) / len(mAP_per_label)
+    ML_score = (mAP + average_auc) / 2
+    print(f'Evaluation - Average Precision: ML_F1: {f1_macro:.3f}, ML_mAP: {mAP:.3f}, ML_AUC: {average_auc:.3f}, ML_Score: {ML_score:.3f}, Bin_F1: {normal_f1:.3f}, Bin_AUC: {normal_auc:.3f}, Model_Score: {(ML_score + normal_auc) / 2:.3f}')
     # plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path)
 
 
