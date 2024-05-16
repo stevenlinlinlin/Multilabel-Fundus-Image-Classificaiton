@@ -13,6 +13,7 @@ import pandas as pd
 import csv
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm 
+from collections import Counter, defaultdict
 
 from models.utils import custom_replace
 eps = np.finfo(float).eps
