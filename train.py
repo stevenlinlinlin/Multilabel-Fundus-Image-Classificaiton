@@ -29,6 +29,7 @@ from models.utils import custom_replace
 from models.swin_transformer import SwinTransformer
 from models.convnext import ConvNeXt
 from models.mydensenet import myDenseNet1, myDenseNet2, myDenseNet3, myDenseNet4
+from models.myconvnext import ConvNeXtTransformer
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
@@ -64,7 +65,7 @@ transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
-    transforms.RandomRotation(90),
+    transforms.RandomRotation(180),
     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
     # transforms.RandomAffine(0, translate=(0.1, 0.1)),
     transforms.ToTensor(),
@@ -115,6 +116,8 @@ def get_model(model_name):
         model = ConvNeXt(num_classes=num_classes).to(device)
     elif model_name == 'mydensenet4':
         model = myDenseNet4(num_classes).to(device)
+    elif model_name == 'myconvnext':
+        model = ConvNeXtTransformer(num_classes).to(device)
     
     return model
 
@@ -138,7 +141,7 @@ def get_dataset():
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, learning_rate, ctran_model=False):
-    num_epochs = 1
+    num_epochs = 35
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     # optimizer = optim.Adam(model.parameters(), lr=0.00001) # c-tran
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
@@ -148,6 +151,14 @@ def train(model, train_dataset, learning_rate, ctran_model=False):
     val_size = int(total_size * 0.2)
     train_size = total_size - val_size
     train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(146))
+    
+    train_label_counts = count_labels(train_dataset, num_classes)
+    val_label_counts = count_labels(val_dataset, num_classes)
+    sorted_train_label_counts = dict(sorted(train_label_counts.items()))
+    sorted_val_label_counts = dict(sorted(val_label_counts.items()))
+    print("Train Label Counts:     ", sorted_train_label_counts)
+    print("Validation Label Counts:", sorted_val_label_counts)
+    
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
 
@@ -402,7 +413,7 @@ def evaluate(model, best_model_state, test_loader, results_path, ctran_model=Fal
     f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
     f1_list = f1_score(all_labels_5, all_preds_5, average=None)
 
-    result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
+    # result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
     print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
     # plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path)
 
@@ -411,9 +422,9 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str)
     parser.add_argument('--save_results_path', type=str)
+    # parser.add_argument('--training_labels_path', type=str)
     parser.add_argument('--ctran_model', action='store_true')
     parser.add_argument('--lr', type=float, default=0.0001)
-    # parser.add_argument()
     args = parser.parse_args()
     return args
 
@@ -423,6 +434,7 @@ if __name__ == "__main__":
     train_dataset, test_dataset, test_loader = get_dataset()
     model = get_model(args.model)
     print(f"===== Model: {model.__class__.__name__} =====")
+    print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
     best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
