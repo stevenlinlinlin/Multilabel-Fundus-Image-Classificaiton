@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, random_split
@@ -95,6 +96,28 @@ def result2csv(results_path, evaluation_labels_path, precision_list, recall_list
             f"{avg_ap:.3f}".ljust(8),
             f"{avg_auc:.3f}".ljust(8)
         ])
+        
+        
+def results2allcsv(results_path, all_results):
+    csv_file_path = 'results/all_models_results.csv'
+    filename = results_path.split('/')[-1]
+    basename = filename.split('.')[0]
+    result_with_name = [basename] + all_results
+    
+    column_names = ['name', 'ML_F1',  'ML_mAP', 'ML_AUC', 'ML_Score', 'Bin_F1', 'Bin_AUC', 'Model_Score']
+    file_exists = os.path.exists(csv_file_path)
+    file_is_empty = os.path.getsize(csv_file_path) == 0 if file_exists else True
+    
+    with open(csv_file_path, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        
+        if file_is_empty:
+            writer.writerow(column_names)
+        
+        writer.writerow(result_with_name)
+        
+    print(f"[Evaluation all results has been written to *{csv_file_path}*]")
+
 
 # Kfold cross validation (k=5)
 def train_kfold(model, train_dataset, learning_rate, ctran_model=False, batch_size=32, prefetch_factor=2, num_workers=4, device='cuda', loss_labels='unk'):

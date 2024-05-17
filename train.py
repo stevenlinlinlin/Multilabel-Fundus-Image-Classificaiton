@@ -421,6 +421,9 @@ def evaluate(model, best_model_state, test_loader, results_path, ctran_model=Fal
     mAP_per_label.pop(1)
     mAP = sum(mAP_per_label) / len(mAP_per_label)
     ML_score = (mAP + average_auc) / 2
+    eval_results = [f1_macro, mAP, average_auc, ML_score, normal_f1, normal_auc, (ML_score + normal_auc) / 2]
+    eval_results = [str(round(result, 3)) for result in eval_results]
+    results2allcsv(results_path, eval_results)
     print(f'Evaluation - Average Precision: ML_F1: {f1_macro:.3f}, ML_mAP: {mAP:.3f}, ML_AUC: {average_auc:.3f}, ML_Score: {ML_score:.3f}, Bin_F1: {normal_f1:.3f}, Bin_AUC: {normal_auc:.3f}, Model_Score: {(ML_score + normal_auc) / 2:.3f}')
     # plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path)
 
