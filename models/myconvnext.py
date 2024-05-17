@@ -19,14 +19,14 @@ class ConvNeXtTransformer(nn.Module):
         
     def forward(self, x):
         x = self.features.forward_features(x)
-        # x_gap = self.gap(x)
+        # x_head = self.features.head(x)
         x = self.flatten(x)
         x = x.permute(0, 2, 1)
         x = self.layer_norm(x)
         x = self.transformer_encoder(x)
         x = x.permute(0, 2, 1)
         x = torch.mean(x,dim=2)
-        # x = torch.cat((x_gap.view(x_gap.size(0), -1), x), dim=1)
+        # x = torch.cat((x_head, x), dim=1)
         x = self.head(x)
         return x
     
