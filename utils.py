@@ -448,7 +448,7 @@ def train_plm(model, train_dataset, learning_rate, ctran_model=False, evaluation
     else:
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     
-    change_rate = 1e-1
+    change_rate = 1
     positive_ratio = get_positive_ratio(train_loader).astype(np.float32)
     ideal_positive_ratio = copy.deepcopy(positive_ratio)
     hist = ProbabilityHistograms(n_classes=num_classes, n_bins=4)
