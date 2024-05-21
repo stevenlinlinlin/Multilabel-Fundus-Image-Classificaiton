@@ -205,8 +205,9 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
         scheduler.step()   
 
         if not evaluation:
-            if train_loss < best_train_loss:
-                best_train_loss = train_loss
+            current_train_loss = train_loss / len(train_loader)
+            if current_train_loss < best_train_loss:
+                best_train_loss = current_train_loss
                 best_model_state = copy.deepcopy(model.state_dict())
                 
             print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}')
