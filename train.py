@@ -19,7 +19,7 @@ from tqdm import tqdm
 from utils import *
 from dataloaders.multilabel_dataset import MultilabelDataset
 from models.resnet import ResNet50, ResNet152
-from models.densenet import DenseNet169, DenseNet161
+from models.densenet import DenseNet169, DenseNet161, DenseNet121
 from models.mobilenet import MobileNetV2
 from models.efficientnet import EfficientNetB3, EfficientNetB5, EfficientNetB7
 from models.inception import InceptionV3
@@ -29,7 +29,7 @@ from models.utils import custom_replace
 from models.swin_transformer import SwinTransformer
 from models.convnext import ConvNeXt
 from models.mydensenet import myDenseNet1, myDenseNet2, myDenseNet3, myDenseNet4
-from models.myconvnext import ConvNeXtTransformer
+from models.myconvnext import ConvNeXtTransformer, ConvNeXtTransformer_concatGAP
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
@@ -62,7 +62,7 @@ loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss r
 ## Transformations adapted for the dataset
 transform = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((224, 224)),
+    transforms.Resize((384, 384)),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
     transforms.RandomRotation(180),
@@ -95,11 +95,12 @@ transform = transforms.Compose([
 # ])
 
 # Models
-def get_model(model_name):
+def get_model(model_name, transformer_layer):
     if model_name == 'resnet':
         model = ResNet152(num_classes).to(device)
     elif model_name == 'densenet':
-        model = DenseNet161(num_classes).to(device)
+        model = DenseNet121(num_classes).to(device)
+        # model = DenseNet161(num_classes).to(device)
     elif model_name == 'mobilenet':
         model = MobileNetV2(num_classes).to(device)
     elif model_name == 'efficientnet':
@@ -117,7 +118,9 @@ def get_model(model_name):
     elif model_name == 'mydensenet4':
         model = myDenseNet4(num_classes).to(device)
     elif model_name == 'myconvnext':
-        model = ConvNeXtTransformer(num_classes).to(device)
+        model = ConvNeXtTransformer(num_classes, num_transformer_layers=transformer_layer).to(device)
+    elif model_name == 'myconvnext_cooncatGAP':
+        model = ConvNeXtTransformer_concatGAP(num_classes, num_transformer_layers=transformer_layer).to(device)
     
     return model
 
@@ -142,7 +145,7 @@ def get_dataset():
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False):
     num_epochs = 35
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)#, weight_decay=0.01) # for transformers
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
     # optimizer = optim.Adam(model.parameters(), lr=0.00001) # c-tran
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
@@ -449,6 +452,7 @@ def parse_arguments():
     parser.add_argument('--ctran_model', action='store_true')
     parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--val', action='store_true')
+    parser.add_argument('--transformer_layer', type=int, default=2)
     args = parser.parse_args()
     return args
 
@@ -456,7 +460,7 @@ def parse_arguments():
 if __name__ == "__main__":
     args = parse_arguments()
     train_dataset, test_dataset, test_loader = get_dataset()
-    model = get_model(args.model)
+    model = get_model(args.model, args.transformer_layer)
     print(f"===== Model: {model.__class__.__name__} =====")
     print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
