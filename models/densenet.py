@@ -27,3 +27,16 @@ class DenseNet161(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+    
+    
+class DenseNet121(nn.Module):
+    def __init__(self, num_classes):
+        super(DenseNet121, self).__init__()
+        densenet121 = models.densenet121(weights='DEFAULT')
+        num_features = densenet121.classifier.in_features
+        densenet121.classifier = nn.Linear(num_features, num_classes)
+        densenet121.classifier.apply(weights_init)
+        self.model = densenet121
+
+    def forward(self, x):
+        return self.model(x)
