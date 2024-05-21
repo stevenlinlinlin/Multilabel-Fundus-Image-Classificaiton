@@ -30,6 +30,33 @@ class ConvNeXtTransformer(nn.Module):
         x = self.head(x)
         return x
     
+
+class ConvNeXtTransformer_concatGAP(nn.Module):
+    def __init__(self, num_classes, nhead=8, dim_feedforward=4096, num_transformer_layers=1):
+        super(ConvNeXtTransformer_concatGAP, self).__init__()
+        # print(f"(Transformer layers : {num_transformer_layers})")
+        self.features = timm.create_model('convnextv2_large.fcmae_ft_in22k_in1k_384', pretrained=True, num_classes=0)
+        self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten(start_dim=2, end_dim=-1)
+        d_model = 1536
+        self.layer_norm = nn.LayerNorm(d_model)
+        encoder_layers = TransformerEncoderLayer(d_model, nhead, dim_feedforward, batch_first=True)#, activation="gelu")
+        self.transformer_encoder = TransformerEncoder(encoder_layers, num_transformer_layers, norm=nn.LayerNorm(d_model), enable_nested_tensor=False)
+        self.classifier = nn.Linear(d_model*2, num_classes)
+        
+    def forward(self, x):
+        x = self.features.forward_features(x)
+        x_head = self.features.head(x)
+        x = self.flatten(x)
+        x = x.permute(0, 2, 1)
+        x = self.layer_norm(x)
+        x = self.transformer_encoder(x)
+        x = x.permute(0, 2, 1)
+        x = torch.mean(x,dim=2)
+        x = torch.cat((x_head, x), dim=1)
+        x = self.classifier(x)
+        return x
+    
     
 class myConvNeXt1(nn.Module):
     def __init__(self, num_classes):
