@@ -140,28 +140,32 @@ def get_dataset():
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, train_dataset, learning_rate, ctran_model=False):
+def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False):
     num_epochs = 35
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)#, weight_decay=0.01) # for transformers
     # optimizer = optim.Adam(model.parameters(), lr=0.00001) # c-tran
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
-    # torch.manual_seed(13)
-    total_size = len(train_dataset)
-    val_size = int(total_size * 0.2)
-    train_size = total_size - val_size
-    train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(146))
-    
-    # train_label_counts = count_labels(train_dataset, num_classes)
-    # val_label_counts = count_labels(val_dataset, num_classes)
-    # sorted_train_label_counts = dict(sorted(train_label_counts.items()))
-    # sorted_val_label_counts = dict(sorted(val_label_counts.items()))
-    # print("Train Label Counts:     ", sorted_train_label_counts)
-    # print("Validation Label Counts:", sorted_val_label_counts)
-    
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
+    if evaluation:
+        # torch.manual_seed(13)
+        total_size = len(train_dataset)
+        val_size = int(total_size * 0.2)
+        train_size = total_size - val_size
+        train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(146))
+        
+        # train_label_counts = count_labels(train_dataset, num_classes)
+        # val_label_counts = count_labels(val_dataset, num_classes)
+        # sorted_train_label_counts = dict(sorted(train_label_counts.items()))
+        # sorted_val_label_counts = dict(sorted(val_label_counts.items()))
+        # print("Train Label Counts:     ", sorted_train_label_counts)
+        # print("Validation Label Counts:", sorted_val_label_counts)
+        
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
+    else:
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
 
+    best_train_loss = float('inf')
     best_val_loss = float('inf')
     best_model_state = None
     for epoch in tqdm(range(num_epochs), desc='Epoch'):
@@ -200,6 +204,14 @@ def train(model, train_dataset, learning_rate, ctran_model=False):
             
         scheduler.step()   
 
+        if not evaluation:
+            if train_loss < best_train_loss:
+                best_train_loss = train_loss
+                best_model_state = copy.deepcopy(model.state_dict())
+                
+            print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}')
+            continue
+    
         # Evaluate the model on the validation set
         model.eval()
         val_loss = 0.0
@@ -435,6 +447,7 @@ def parse_arguments():
     # parser.add_argument('--training_labels_path', type=str)
     parser.add_argument('--ctran_model', action='store_true')
     parser.add_argument('--lr', type=float, default=0.0001)
+    parser.add_argument('--val', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -446,9 +459,9 @@ if __name__ == "__main__":
     print(f"===== Model: {model.__class__.__name__} =====")
     print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
-    best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model)
-    # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
+    best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val)
+    # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
-    print("******************** Evaluation ********************")
+    print("******************** Testing ********************")
     evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model)
     # evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model, best_model =True)

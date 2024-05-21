@@ -431,19 +431,22 @@ def kullback_leibler_divergence(p, q):
     return kl_div
 
 # train with Partial Label Masking
-def train_plm(model, train_dataset, learning_rate, ctran_model=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
+def train_plm(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
     print(f"[Training with Partial Label Masking]")
     num_epochs = 35
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
-    # torch.manual_seed(13)
-    total_size = len(train_dataset)
-    val_size = int(total_size * 0.2)
-    train_size = total_size - val_size
-    train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(146))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
+    if evaluation:
+        # torch.manual_seed(13)
+        total_size = len(train_dataset)
+        val_size = int(total_size * 0.2)
+        train_size = total_size - val_size
+        train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(146))
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
+    else:
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     
     change_rate = 1e-1
     positive_ratio = get_positive_ratio(train_loader).astype(np.float32)
@@ -453,6 +456,7 @@ def train_plm(model, train_dataset, learning_rate, ctran_model=False, num_classe
         generator=RandomMultiHotGenerator(seed=146)
     )
 
+    best_train_loss = float('inf')
     best_val_loss = float('inf')
     best_model_state = None
     for epoch in tqdm(range(num_epochs), desc='Epoch'):
@@ -503,6 +507,14 @@ def train_plm(model, train_dataset, learning_rate, ctran_model=False, num_classe
         
         scheduler.step()   
 
+        if not evaluation:
+            if train_loss < best_train_loss:
+                best_train_loss = train_loss
+                best_model_state = copy.deepcopy(model.state_dict())
+                
+            print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}')
+            continue
+        
         # Evaluate the model on the validation set
         model.eval()
         val_loss = 0.0
