@@ -50,7 +50,7 @@ training_labels_path = 'data/fundus/MuReD/train_data.csv'
 evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
 training_images_dir = 'data/fundus/MuReD/images/images'
 evaluation_images_dir = 'data/fundus/MuReD/images/images'
-da_training_images_dir = 'data/fundus/MuReD/images/ros' # 'data/fundus/MuReD/images/xxxx' or None
+da_training_images_dir = 'data/fundus/MuReD/images/my_remedial' # 'data/fundus/MuReD/images/xxxx' or None
 
 # auc_fig_path = 'results/auc/densenet161.png'
 # results_path = 'results/densenet161_90.csv'
@@ -446,13 +446,14 @@ def evaluate(model, best_model_state, test_loader, results_path, ctran_model=Fal
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str)
-    parser.add_argument('--save_results_path', type=str)
+    parser.add_argument('--model', type=str, default='myconvnext_concatGAP', help='Model name')
+    parser.add_argument('--save_results_path', type=str, default='results/myconvnext_concatGAP.csv', help='Path to save the evaluation results')
+    parser.add_argument('--ctran_model', action='store_true', help='Use CTran model')
+    parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
+    parser.add_argument('--val', action='store_true', help='split the training set into training and validation')
+    parser.add_argument('--transformer_layer', type=int, default=2, help='Number of transformer layers')
+    parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
     # parser.add_argument('--training_labels_path', type=str)
-    parser.add_argument('--ctran_model', action='store_true')
-    parser.add_argument('--lr', type=float, default=0.0001)
-    parser.add_argument('--val', action='store_true')
-    parser.add_argument('--transformer_layer', type=int, default=2)
     args = parser.parse_args()
     return args
 
