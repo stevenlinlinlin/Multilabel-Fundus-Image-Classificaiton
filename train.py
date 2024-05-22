@@ -144,7 +144,7 @@ def get_dataset():
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False):
-    num_epochs = 35
+    num_epochs = 1
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
     # optimizer = optim.Adam(model.parameters(), lr=0.00001) # c-tran
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
@@ -321,7 +321,7 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
 
 
 # Evaluate the model on the test set
-def evaluate(model, best_model_state, test_loader, results_path, ctran_model=False, best_model=False):
+def evaluate(model, best_model_state, test_loader, results_path, normal_index=1, ctran_model=False, best_model=False):
     if best_model:
         print("------ Best model evaluation -----")
         model.load_state_dict(best_model_state)
@@ -430,11 +430,12 @@ def evaluate(model, best_model_state, test_loader, results_path, ctran_model=Fal
     f1_list = list(f1_score(all_labels_5, all_preds_5, average=None))
     result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
     # print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
-    normal_auc = auc_scores.pop(1)
+    
+    normal_auc = auc_scores.pop(normal_index)
     average_auc = sum(auc_scores) / len(auc_scores)
-    normal_f1 = f1_list.pop(1)
+    normal_f1 = f1_list.pop(normal_index)
     f1_macro = sum(f1_list) / len(f1_list)
-    mAP_per_label.pop(1)
+    mAP_per_label.pop(normal_index)
     mAP = sum(mAP_per_label) / len(mAP_per_label)
     ML_score = (mAP + average_auc) / 2
     eval_results = [f1_macro, mAP, average_auc, ML_score, normal_f1, normal_auc, (ML_score + normal_auc) / 2]
@@ -469,5 +470,5 @@ if __name__ == "__main__":
     # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
-    evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model)
+    evaluate(model, best_model_state, test_loader, args.save_results_path, normal_index=args.normal_class, ctran_model=args.ctran_model)
     # evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model, best_model =True)
