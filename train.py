@@ -37,24 +37,9 @@ print(torch.cuda.get_device_name(0))
 prefetch_factor = 64
 num_workers = 28
 batch_size = 16
-# RFMiD dataset
-# num_classes = 28
-# training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv'
-# evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
-# training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
-# evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
-selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
-# MuReD dataset
-num_classes = 20
-training_labels_path = 'data/fundus/MuReD/train_data.csv'
-evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
-training_images_dir = 'data/fundus/MuReD/images/images'
-evaluation_images_dir = 'data/fundus/MuReD/images/images'
-da_training_images_dir = 'data/fundus/MuReD/images/my_remedial' # 'data/fundus/MuReD/images/xxxx' or None
-
+# selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
 # auc_fig_path = 'results/auc/densenet161.png'
 # results_path = 'results/densenet161_90.csv'
-
 # ctran_model = False # True for CTran, False for CNN
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
 
@@ -94,6 +79,30 @@ transform = transforms.Compose([
 #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 # ])
 
+
+def dataset2train(dataset_name):
+    rfmid_ori = False
+    if dataset_name == 'rfmid':
+        # RFMiD dataset
+        rfmid_ori  = True
+        num_classes = 29
+        training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv'
+        evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
+        training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
+        evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
+        da_training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
+    elif dataset_name == 'mured':
+        # MuReD dataset
+        num_classes = 20
+        training_labels_path = 'data/fundus/MuReD/train_data.csv'
+        evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
+        training_images_dir = 'data/fundus/MuReD/images/images'
+        evaluation_images_dir = 'data/fundus/MuReD/images/images'
+        da_training_images_dir = 'data/fundus/MuReD/images/my_remedial' # 'data/fundus/MuReD/images/xxxx' or None
+        
+    return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, rfmid_ori
+
+
 # Models
 def get_model(model_name, transformer_layer):
     if model_name == 'resnet':
@@ -125,7 +134,7 @@ def get_model(model_name, transformer_layer):
     return model
 
 # datasets
-def get_dataset():
+def get_dataset(num_classes, training_labels_path, training_images_dir, da_training_images_dir, evaluation_labels_path, evaluation_images_dir):
     # train dataset
     train_dataset = MultilabelDataset(ann_dir=training_labels_path,
                                 root_dir=training_images_dir,
@@ -143,7 +152,7 @@ def get_dataset():
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False):
+def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, rfmid_ori=False):
     num_epochs = 1
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
     # optimizer = optim.Adam(model.parameters(), lr=0.00001) # c-tran
@@ -289,7 +298,7 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
             best_val_loss = current_val_loss
             best_model_state = copy.deepcopy(model.state_dict())
         
-        if selected_data == 'original':
+        if rfmid_ori:
             print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}')
             continue
         
@@ -321,7 +330,7 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
 
 
 # Evaluate the model on the test set
-def evaluate(model, best_model_state, test_loader, results_path, normal_index=1, ctran_model=False, best_model=False):
+def evaluate(model, best_model_state, test_loader, results_path, evaluation_labels_path, normal_index=1, ctran_model=False, best_model=False):
     if best_model:
         print("------ Best model evaluation -----")
         model.load_state_dict(best_model_state)
@@ -454,6 +463,7 @@ def parse_arguments():
     parser.add_argument('--val', action='store_true', help='split the training set into training and validation')
     parser.add_argument('--transformer_layer', type=int, default=2, help='Number of transformer layers')
     parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
+    parser.add_argument('--dataset', type=str, default='mured', help='Dataset name: mured or rfmid')
     # parser.add_argument('--training_labels_path', type=str)
     args = parser.parse_args()
     return args
@@ -461,14 +471,15 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    train_dataset, test_dataset, test_loader = get_dataset()
+    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, rfmid_ori = dataset2train(args.dataset)
+    train_dataset, test_dataset, test_loader = get_dataset(num_classes=num_classes, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir)
     model = get_model(args.model, args.transformer_layer)
     print(f"===== Model: {model.__class__.__name__} =====")
     print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
-    best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val)
-    # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
+    best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori)
+    # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
-    evaluate(model, best_model_state, test_loader, args.save_results_path, normal_index=args.normal_class, ctran_model=args.ctran_model)
+    evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, normal_index=args.normal_class, ctran_model=args.ctran_model)
     # evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model, best_model =True)
