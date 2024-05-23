@@ -152,9 +152,12 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, rfmid_ori=False):
+def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, rfmid_ori=False, weight_decay=False):
     num_epochs = 1
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
+    if weight_decay:
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    else:
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
     # optimizer = optim.Adam(model.parameters(), lr=0.00001) # c-tran
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
@@ -464,6 +467,7 @@ def parse_arguments():
     parser.add_argument('--transformer_layer', type=int, default=2, help='Number of transformer layers')
     parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
     parser.add_argument('--dataset', type=str, default='mured', help='Dataset name: mured or rfmid')
+    parser.add_argument('--weight_decay', action='store_true')
     # parser.add_argument('--training_labels_path', type=str)
     args = parser.parse_args()
     return args
@@ -477,7 +481,7 @@ if __name__ == "__main__":
     print(f"===== Model: {model.__class__.__name__} =====")
     print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
-    best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori)
+    best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori, weight_decay=args.weight_decay)
     # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
