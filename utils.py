@@ -98,22 +98,23 @@ def result2csv(results_path, evaluation_labels_path, precision_list, recall_list
         ])
         
         
-def results2allcsv(results_path, all_results):
-    csv_file_path = 'results/all_models_results.csv'
+def results2allcsv(results_path, all_results, dataset_name):
+    if dataset_name == 'mured':
+        csv_file_path = 'results/all_models_results_mured.csv'
+    elif dataset_name == 'rfmid':
+        csv_file_path = 'results/all_models_results_rfmid.csv'
+    
+    if not os.path.exists(csv_file_path):
+        column_names = ['name', 'ML_F1',  'ML_mAP', 'ML_AUC', 'ML_Score', 'Bin_F1', 'Bin_AUC', 'Model_Score']
+        df = pd.DataFrame(columns=column_names)
+        df.to_csv(csv_file_path, index=False)
+    
     filename = results_path.split('/')[-1]
     basename = filename.split('.')[0]
     result_with_name = [basename] + all_results
     
-    column_names = ['name', 'ML_F1',  'ML_mAP', 'ML_AUC', 'ML_Score', 'Bin_F1', 'Bin_AUC', 'Model_Score']
-    file_exists = os.path.exists(csv_file_path)
-    file_is_empty = os.path.getsize(csv_file_path) == 0 if file_exists else True
-    
     with open(csv_file_path, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        
-        if file_is_empty:
-            writer.writerow(column_names)
-        
         writer.writerow(result_with_name)
         
     print(f"[Evaluation all results has been written to *{csv_file_path}*]")

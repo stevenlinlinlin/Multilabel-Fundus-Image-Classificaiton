@@ -153,7 +153,7 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, rfmid_ori=False, weight_decay=False):
-    num_epochs = 1
+    num_epochs = 35
     if weight_decay:
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     else:
@@ -333,7 +333,7 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
 
 
 # Evaluate the model on the test set
-def evaluate(model, best_model_state, test_loader, results_path, evaluation_labels_path, normal_index=1, ctran_model=False, best_model=False):
+def evaluate(model, best_model_state, test_loader, results_path, evaluation_labels_path, dataset_name, normal_index=1, ctran_model=False, best_model=False):
     if best_model:
         print("------ Best model evaluation -----")
         model.load_state_dict(best_model_state)
@@ -440,6 +440,7 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
     all_labels_5 = np.vstack(all_labels_5)
     f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
     f1_list = list(f1_score(all_labels_5, all_preds_5, average=None))
+    os.makedirs('results', exist_ok=True)
     result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
     # print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
     
@@ -452,7 +453,7 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
     ML_score = (mAP + average_auc) / 2
     eval_results = [f1_macro, mAP, average_auc, ML_score, normal_f1, normal_auc, (ML_score + normal_auc) / 2]
     eval_results = [str(round(result, 3)) for result in eval_results]
-    results2allcsv(results_path, eval_results)
+    results2allcsv(results_path, eval_results, dataset_name)
     print(f'Evaluation - Average Precision: ML_F1: {f1_macro:.3f}, ML_mAP: {mAP:.3f}, ML_AUC: {average_auc:.3f}, ML_Score: {ML_score:.3f}, Bin_F1: {normal_f1:.3f}, Bin_AUC: {normal_auc:.3f}, Model_Score: {(ML_score + normal_auc) / 2:.3f}')
     # plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path)
 
@@ -485,5 +486,5 @@ if __name__ == "__main__":
     # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
-    evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, normal_index=args.normal_class, ctran_model=args.ctran_model)
+    evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=args.normal_class, ctran_model=args.ctran_model)
     # evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model, best_model =True)

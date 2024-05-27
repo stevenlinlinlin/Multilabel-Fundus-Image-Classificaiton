@@ -1,13 +1,13 @@
 #!/bin/bash
 
-CUDA_VISIBLE_DEVICES=$1 python train.py \
-    --model "myconvnext_concatGAP" \
-    --save_results_path "results/myconvnext_2layer_wd_concatGAP_rfmid.csv" \
-    --transformer_layer 2 \
-    --val \
-    --weight_decay \
-    --normal_class 0 \
-    --dataset "rfmid"
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "myconvnext_concatGAP" \
+#     --save_results_path "results/myconvnext_2layer_wd_concatGAP_rfmid.csv" \
+#     --transformer_layer 2 \
+#     --val \
+#     --weight_decay \
+#     --normal_class 0 \
+#     --dataset "rfmid"
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "myconvnext" \
@@ -39,12 +39,12 @@ CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --normal_class 0 \
 #     --dataset "rfmid"
 
-# CUDA_VISIBLE_DEVICES=$1 python train.py \
-#     --model "densenet" \
-#     --save_results_path "results/densenet_384.csv" \
-#     --val \
-#     --normal_class 0 \
-#     --dataset "rfmid"
+CUDA_VISIBLE_DEVICES=$1 python train.py \
+    --model "densenet" \
+    --save_results_path "results/test.csv" \
+    --val \
+    --normal_class 0 \
+    --dataset "rfmid"
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "ctran" \
