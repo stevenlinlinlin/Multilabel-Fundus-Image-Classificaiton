@@ -128,7 +128,7 @@ def get_model(model_name, transformer_layer):
         model = myDenseNet4(num_classes).to(device)
     elif model_name == 'myconvnext':
         model = ConvNeXtTransformer(num_classes, num_transformer_layers=transformer_layer).to(device)
-    elif model_name == 'myconvnext_cooncatGAP':
+    elif model_name == 'myconvnext_concatGAP':
         model = ConvNeXtTransformer_concatGAP(num_classes, num_transformer_layers=transformer_layer).to(device)
     
     return model
