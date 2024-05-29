@@ -86,6 +86,7 @@ def dataset2train(dataset_name):
         # RFMiD dataset
         # rfmid_ori  = True
         num_classes = 29
+        normal_class_index = 0
         training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv'
         evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
         training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
@@ -94,13 +95,14 @@ def dataset2train(dataset_name):
     elif dataset_name == 'mured':
         # MuReD dataset
         num_classes = 20
+        normal_class_index = 1
         training_labels_path = 'data/fundus/MuReD/train_data.csv'
         evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
         training_images_dir = 'data/fundus/MuReD/images/images'
         evaluation_images_dir = 'data/fundus/MuReD/images/images'
         da_training_images_dir = 'data/fundus/MuReD/images/my_remedial' # 'data/fundus/MuReD/images/xxxx' or None
         
-    return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir
+    return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index
 
 
 # Models
@@ -153,7 +155,7 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False):
-    num_epochs = 35
+    num_epochs = 1
     if weight_decay:
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     else:
@@ -440,7 +442,11 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
     all_labels_5 = np.vstack(all_labels_5)
     f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
     f1_list = list(f1_score(all_labels_5, all_preds_5, average=None))
-    os.makedirs('results', exist_ok=True)
+    
+    if dataset_name == 'rfmid':
+        os.makedirs('results/rfmid', exist_ok=True)
+    elif dataset_name == 'mured':
+        os.makedirs('results/mured', exist_ok=True)
     result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
     # print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
     
@@ -466,9 +472,9 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
     parser.add_argument('--val', action='store_true', help='split the training set into training and validation')
     parser.add_argument('--transformer_layer', type=int, default=2, help='Number of transformer layers')
-    parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
     parser.add_argument('--dataset', type=str, default='mured', help='Dataset name: mured or rfmid')
     parser.add_argument('--weight_decay', action='store_true')
+    # parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
     # parser.add_argument('--training_labels_path', type=str)
     args = parser.parse_args()
     return args
@@ -476,7 +482,7 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir = dataset2train(args.dataset)
+    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index = dataset2train(args.dataset)
     train_dataset, test_dataset, test_loader = get_dataset(num_classes=num_classes, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir)
     model = get_model(args.model, args.transformer_layer)
     print(f"===== Model: {model.__class__.__name__} =====")
@@ -486,5 +492,5 @@ if __name__ == "__main__":
     # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
-    evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=args.normal_class, ctran_model=args.ctran_model)
+    evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
     # evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model, best_model =True)
