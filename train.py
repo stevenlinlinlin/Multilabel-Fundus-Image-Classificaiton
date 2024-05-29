@@ -81,10 +81,10 @@ transform = transforms.Compose([
 
 
 def dataset2train(dataset_name):
-    rfmid_ori = False
+    # rfmid_ori = False
     if dataset_name == 'rfmid':
         # RFMiD dataset
-        rfmid_ori  = True
+        # rfmid_ori  = True
         num_classes = 29
         training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv'
         evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
@@ -100,7 +100,7 @@ def dataset2train(dataset_name):
         evaluation_images_dir = 'data/fundus/MuReD/images/images'
         da_training_images_dir = 'data/fundus/MuReD/images/my_remedial' # 'data/fundus/MuReD/images/xxxx' or None
         
-    return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, rfmid_ori
+    return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir
 
 
 # Models
@@ -152,7 +152,7 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, rfmid_ori=False, weight_decay=False):
+def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False):
     num_epochs = 35
     if weight_decay:
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -166,7 +166,7 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
         total_size = len(train_dataset)
         val_size = int(total_size * 0.2)
         train_size = total_size - val_size
-        train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(146))
+        train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
         
         # train_label_counts = count_labels(train_dataset, num_classes)
         # val_label_counts = count_labels(val_dataset, num_classes)
@@ -301,9 +301,9 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
             best_val_loss = current_val_loss
             best_model_state = copy.deepcopy(model.state_dict())
         
-        if rfmid_ori:
-            print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}')
-            continue
+        # if rfmid_ori:
+        #     print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}')
+        #     continue
         
         ## method 1.
         # accuracy = correct_predictions / total_samples
@@ -476,13 +476,13 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, rfmid_ori = dataset2train(args.dataset)
+    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir = dataset2train(args.dataset)
     train_dataset, test_dataset, test_loader = get_dataset(num_classes=num_classes, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir)
     model = get_model(args.model, args.transformer_layer)
     print(f"===== Model: {model.__class__.__name__} =====")
     print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
-    best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori, weight_decay=args.weight_decay)
+    best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay)
     # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")

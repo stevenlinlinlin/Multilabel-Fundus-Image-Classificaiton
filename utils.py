@@ -432,7 +432,7 @@ def kullback_leibler_divergence(p, q):
     return kl_div
 
 # train with Partial Label Masking
-def train_plm(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, rfmid_ori=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
+def train_plm(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
     print(f"[Training with Partial Label Masking]")
     num_epochs = 35
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
@@ -589,9 +589,9 @@ def train_plm(model, train_dataset, learning_rate, ctran_model=False, evaluation
             best_val_loss = current_val_loss
             best_model_state = copy.deepcopy(model.state_dict())
         
-        if rfmid_ori:
-            print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}')
-            continue
+        # if rfmid_ori:
+        #     print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}')
+        #     continue
         
         ## method 1.
         # accuracy = correct_predictions / total_samples
