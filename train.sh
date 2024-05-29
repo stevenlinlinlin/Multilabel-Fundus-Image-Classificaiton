@@ -2,41 +2,36 @@
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "myconvnext_concatGAP" \
-#     --save_results_path "results/myconvnext_2layer_wd_concatGAP_rfmid.csv" \
+#     --save_results_path "results/rfmid/myconvnext_2layer_wd_concatGAP.csv" \
 #     --transformer_layer 2 \
 #     --val \
 #     --weight_decay \
-#     --normal_class 0 \
 #     --dataset "rfmid"
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "myconvnext" \
-#     --save_results_path "results/myconvnext.csv" \
+#     --save_results_path "results/rfmid/myconvnext.csv" \
 #     --transformer_layer 2 \
 #     --weight_decay \
 #     --val \
-#     --normal_class 0 \
 #     --dataset "rfmid"
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "convnext" \
-#     --save_results_path "results/convnextV2-L.csv" \
+#     --save_results_path "results/rfmid/convnextV2-L.csv" \
 #     --val \
-#     --normal_class 0 \
 #     --dataset "rfmid"
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "swin" \
-#     --save_results_path "results/swinV2-B.csv" \
+#     --save_results_path "results/rfmid/swinV2-B.csv" \
 #     --val \
-#     --normal_class 0 \
 #     --dataset "rfmid"
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "efficientnet" \
-#     --save_results_path "results/efficientnetB7.csv" \
+#     --save_results_path "results/rfmid/efficientnetB7.csv" \
 #     --val \
-#     --normal_class 0 \
 #     --dataset "rfmid"
 
 CUDA_VISIBLE_DEVICES=$1 python train.py \
@@ -47,9 +42,8 @@ CUDA_VISIBLE_DEVICES=$1 python train.py \
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "ctran" \
-#     --save_results_path "results/ctran.csv" \
+#     --save_results_path "results/rfmid/ctran.csv" \
 #     --ctran_model \
 #     --val \
-#     --normal_class 0 \
 #     --dataset "rfmid" \
 #     --lr 0.00001
