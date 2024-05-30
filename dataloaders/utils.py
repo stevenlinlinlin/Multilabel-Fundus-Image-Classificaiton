@@ -24,47 +24,47 @@ def get_unk_mask_indices(image,testing,num_labels,known_labels):
 
 def fov_extractor(image):
     # Method 1: Using contours
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY)
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    c = max(contours, key=cv2.contourArea)
-    mask = np.zeros_like(gray)
-    cv2.drawContours(mask, [c], -1, 255, thickness=cv2.FILLED)
-    result = cv2.bitwise_and(image, image, mask=mask)
-    result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
-    return result
+    # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY)
+    # contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # c = max(contours, key=cv2.contourArea)
+    # mask = np.zeros_like(gray)
+    # cv2.drawContours(mask, [c], -1, 255, thickness=cv2.FILLED)
+    # result = cv2.bitwise_and(image, image, mask=mask)
+    # result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+    # return result
     
     # Method 2: Using intensity profile
-    # # Step 1: Convert to red channel and find image dimensions
-    # red_channel = image[:, :, 2]  # Assuming the image is in BGR format
-    # h, w = red_channel.shape
+    # Step 1: Convert to red channel and find image dimensions
+    red_channel = image[:, :, 2]  # Assuming the image is in BGR format
+    h, w = red_channel.shape
 
-    # # Step 2: Calculate center lines
-    # Hcenterline = h // 2
-    # Vcenterline = w // 2
+    # Step 2: Calculate center lines
+    Hcenterline = h // 2
+    Vcenterline = w // 2
 
-    # # Step 3: Draw scanning lines and calculate intensity profile
-    # horizontal_line = red_channel[Hcenterline, :]
-    # vertical_line = red_channel[:, Vcenterline]
+    # Step 3: Draw scanning lines and calculate intensity profile
+    horizontal_line = red_channel[Hcenterline, :]
+    vertical_line = red_channel[:, Vcenterline]
 
-    # # Step 4: Calculate threshold using empirical factor
-    # th = max(horizontal_line) * 0.06
+    # Step 4: Calculate threshold using empirical factor
+    th = max(horizontal_line) * 0.06
 
-    # # Find transitions based on threshold
-    # horizontal_transitions = np.where(np.diff(horizontal_line > th))[0]
-    # vertical_transitions = np.where(np.diff(vertical_line > th))[0]
+    # Find transitions based on threshold
+    horizontal_transitions = np.where(np.diff(horizontal_line > th))[0]
+    vertical_transitions = np.where(np.diff(vertical_line > th))[0]
 
-    # # Ensure there are at least two transitions to form a rectangle
-    # if len(horizontal_transitions) >= 2 and len(vertical_transitions) >= 2:
-    #     X1, X2 = horizontal_transitions[[0, -1]]
-    #     Y1, Y2 = vertical_transitions[[0, -1]]
+    # Ensure there are at least two transitions to form a rectangle
+    if len(horizontal_transitions) >= 2 and len(vertical_transitions) >= 2:
+        X1, X2 = horizontal_transitions[[0, -1]]
+        Y1, Y2 = vertical_transitions[[0, -1]]
 
-    #     # Step 5: Crop the FOV based on found coordinates
-    #     fov_image = image[Y1:Y2, X1:X2]
-    #     return fov_image
-    # else:
-    #     print("No valid transitions found")
-    #     return None  # In case no valid transitions are found
+        # Step 5: Crop the FOV based on found coordinates
+        fov_image = image[Y1:Y2, X1:X2]
+        return fov_image
+    else:
+        print("No valid transitions found")
+        return None  # In case no valid transitions are found
     
 def enhance_image(image, r, eps, enhancement_factor):
     image = image.astype(np.float32)
