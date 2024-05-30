@@ -80,27 +80,47 @@ transform = transforms.Compose([
 # ])
 
 
-def dataset2train(dataset_name):
-    # rfmid_ori = False
-    if dataset_name == 'rfmid':
-        # RFMiD dataset
-        # rfmid_ori  = True
-        num_classes = 29
-        normal_class_index = 0
-        training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv'
-        evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
-        training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
-        evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
-        da_training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
-    elif dataset_name == 'mured':
-        # MuReD dataset
-        num_classes = 20
-        normal_class_index = 1
-        training_labels_path = 'data/fundus/MuReD/train_data.csv'
-        evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
-        training_images_dir = 'data/fundus/MuReD/images/images'
-        evaluation_images_dir = 'data/fundus/MuReD/images/images'
-        da_training_images_dir = 'data/fundus/MuReD/images/my_remedial' # 'data/fundus/MuReD/images/xxxx' or None
+def dataset2train(dataset_name, data_aug=None):
+    if data_aug:
+        # print(f"[Data Augmentation: {data_aug}]")
+        if dataset_name == 'rfmid':
+            # RFMiD dataset
+            num_classes = 29
+            normal_class_index = 0
+            training_labels_path = f"data/fundus/RFMiD/Training_Set/{data_aug}_new_RFMiD_Training_Labels.csv"
+            evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
+            training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
+            evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
+            da_training_images_dir = f"data/fundus/RFMiD/Training_Set/{data_aug}"
+        elif dataset_name == 'mured':
+            # MuReD dataset
+            num_classes = 20
+            normal_class_index = 1
+            training_labels_path = f"data/fundus/MuReD/{data_aug}_train_data.csv"
+            evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
+            training_images_dir = 'data/fundus/MuReD/images/images'
+            evaluation_images_dir = 'data/fundus/MuReD/images/images'
+            da_training_images_dir = f"data/fundus/MuReD/images/{data_aug}"
+    else:
+        # print("[Original Data]")
+        if dataset_name == 'rfmid':
+            # RFMiD dataset
+            num_classes = 29
+            normal_class_index = 0
+            training_labels_path = 'data/fundus/RFMiD/Training_Set/new_RFMiD_Training_Labels.csv'
+            evaluation_labels_path = 'data/fundus/RFMiD/Evaluation_Set/new_RFMiD_Validation_Labels.csv'
+            training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
+            evaluation_images_dir = 'data/fundus/RFMiD/Evaluation_Set/Validation'
+            da_training_images_dir = 'data/fundus/RFMiD/Training_Set/Training'
+        elif dataset_name == 'mured':
+            # MuReD dataset
+            num_classes = 20
+            normal_class_index = 1
+            training_labels_path = 'data/fundus/MuReD/train_data.csv'
+            evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
+            training_images_dir = 'data/fundus/MuReD/images/images'
+            evaluation_images_dir = 'data/fundus/MuReD/images/images'
+            da_training_images_dir = 'data/fundus/MuReD/images/images' # 'data/fundus/MuReD/images/xxxx' or None
         
     return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index
 
@@ -474,6 +494,7 @@ def parse_arguments():
     parser.add_argument('--transformer_layer', type=int, default=2, help='Number of transformer layers')
     parser.add_argument('--dataset', type=str, default='mured', help='Dataset name: mured or rfmid')
     parser.add_argument('--weight_decay', action='store_true')
+    parser.add_argument('--data_aug', type=str, default=None, help='Data augmentation methods or None')
     # parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
     # parser.add_argument('--training_labels_path', type=str)
     args = parser.parse_args()
@@ -482,7 +503,7 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index = dataset2train(args.dataset)
+    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index = dataset2train(args.dataset, args.data_aug)
     train_dataset, test_dataset, test_loader = get_dataset(num_classes=num_classes, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir)
     model = get_model(args.model, args.transformer_layer)
     print(f"===== Model: {model.__class__.__name__} =====")
