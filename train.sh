@@ -39,7 +39,7 @@ CUDA_VISIBLE_DEVICES=$1 python train.py \
     --save_results_path "results/rfmid/densenet161_1.csv" \
     --val \
     --dataset "mured" \
-    --data_aug "mlsmote"
+    --plm
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "ctran" \

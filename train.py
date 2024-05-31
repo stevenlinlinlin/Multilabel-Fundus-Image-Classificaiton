@@ -495,6 +495,7 @@ def parse_arguments():
     parser.add_argument('--dataset', type=str, default='mured', help='Dataset name: mured or rfmid')
     parser.add_argument('--weight_decay', action='store_true')
     parser.add_argument('--data_aug', type=str, default=None, help='Data augmentation methods or None')
+    parser.add_argument('--plm', action='store_true', help='Partial Label Masking training')
     # parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
     # parser.add_argument('--training_labels_path', type=str)
     args = parser.parse_args()
@@ -509,8 +510,10 @@ if __name__ == "__main__":
     print(f"===== Model: {model.__class__.__name__} =====")
     print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
-    best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay)
-    # best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, rfmid_ori=rfmid_ori, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
+    if args.plm:
+        best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
+    else:
+        best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
     evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
