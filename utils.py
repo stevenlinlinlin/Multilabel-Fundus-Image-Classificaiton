@@ -96,22 +96,25 @@ def result2csv(results_path, evaluation_labels_path, precision_list, recall_list
             f"{avg_ap:.3f}".ljust(8),
             f"{avg_auc:.3f}".ljust(8)
         ])
+    
+    avg_results = [avg_precision, avg_recall, avg_f1, avg_ap, avg_auc]
+    avg_results = [str(round(result, 3)) for result in avg_results]
+    return avg_results
         
-        
-def results2allcsv(results_path, all_results, dataset_name):
+def results2allcsv(results_path, all_results, avg_results, dataset_name):
     if dataset_name == 'mured':
         csv_file_path = 'results/all_models_results_mured.csv'
     elif dataset_name == 'rfmid':
         csv_file_path = 'results/all_models_results_rfmid.csv'
     
     if not os.path.exists(csv_file_path):
-        column_names = ['name', 'ML_F1',  'ML_mAP', 'ML_AUC', 'ML_Score', 'Bin_F1', 'Bin_AUC', 'Model_Score']
+        column_names = ['name', 'Avg_Precision', 'Avg_Recall', 'F1_macro', 'mAP', 'Avg_AUC', 'ML_F1',  'ML_mAP', 'ML_AUC', 'ML_Score', 'Bin_F1', 'Bin_AUC', 'Model_Score']
         df = pd.DataFrame(columns=column_names)
         df.to_csv(csv_file_path, index=False)
     
     filename = results_path.split('/')[-1]
     basename = filename.split('.')[0]
-    result_with_name = [basename] + all_results
+    result_with_name = [basename] + avg_results + all_results
     
     with open(csv_file_path, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile)

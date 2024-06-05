@@ -169,10 +169,10 @@
 #     --weight_decay \
 #     --dataset "mured"
 
-DenseNet161
+# DenseNet161
 CUDA_VISIBLE_DEVICES=$1 python train.py \
     --model "densenet" \
-    --save_results_path "results/mured/densenet161.csv" \
+    --save_results_path "results/mured/test.csv" \
     --val \
     --dataset "mured"
 

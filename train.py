@@ -175,7 +175,7 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False, warmup=False):
-    num_epochs = 35
+    num_epochs = 1
     if weight_decay:
         optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
     else:
@@ -483,7 +483,7 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
         os.makedirs('results/rfmid', exist_ok=True)
     elif dataset_name == 'mured':
         os.makedirs('results/mured', exist_ok=True)
-    result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
+    avg_results = result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
     # print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
     
     normal_auc = auc_scores.pop(normal_index)
@@ -495,8 +495,10 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
     ML_score = (mAP + average_auc) / 2
     eval_results = [f1_macro, mAP, average_auc, ML_score, normal_f1, normal_auc, (ML_score + normal_auc) / 2]
     eval_results = [str(round(result, 3)) for result in eval_results]
-    results2allcsv(results_path, eval_results, dataset_name)
-    print(f'Evaluation - Average Precision: ML_F1: {f1_macro:.3f}, ML_mAP: {mAP:.3f}, ML_AUC: {average_auc:.3f}, ML_Score: {ML_score:.3f}, Bin_F1: {normal_f1:.3f}, Bin_AUC: {normal_auc:.3f}, Model_Score: {(ML_score + normal_auc) / 2:.3f}')
+    results2allcsv(results_path, eval_results, avg_results, dataset_name)
+    print(f'===== Evaluation results =====')
+    print(f'Average Precision: {avg_results[0]}, Average Recall: {avg_results[1]}, F1_macro: {avg_results[2]}, mAP: {avg_results[3]}, Average AUC: {avg_results[4]}')
+    print(f'ML_F1: {f1_macro:.3f}, ML_mAP: {mAP:.3f}, ML_AUC: {average_auc:.3f}, ML_Score: {ML_score:.3f}, Bin_F1: {normal_f1:.3f}, Bin_AUC: {normal_auc:.3f}, Model_Score: {(ML_score + normal_auc) / 2:.3f}')
     # plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path)
 
 
