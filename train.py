@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import LambdaLR, StepLR
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score, precision_score, recall_score
@@ -174,15 +174,21 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False):
-    num_epochs = 1
+def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False, warmup=False):
+    num_epochs = 35
     if weight_decay:
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    else:
         optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
+    else:
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     # optimizer = optim.Adam(model.parameters(), lr=0.00001) # c-tran
-    scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
     
+    if warmup:
+        num_epochs += 5
+        warmup_scheduler = LambdaLR(optimizer, lr_lambda=linear_warmup)
+        
+    step_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+    # scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
+        
     if evaluation:
         # torch.manual_seed(13)
         total_size = len(train_dataset)
@@ -239,7 +245,17 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
             loss_out.backward()
             optimizer.step()
             
-        scheduler.step()   
+        # scheduler.step()
+        if epoch < 5:
+            if warmup:
+                # print(warmup_scheduler.get_last_lr())
+                warmup_scheduler.step()
+            else:
+                step_scheduler.step()
+                # print(step_scheduler.get_last_lr())
+        else:
+            step_scheduler.step()
+            # print(step_scheduler.get_last_lr())
 
         if not evaluation:
             current_train_loss = train_loss / len(train_loader)
@@ -494,6 +510,7 @@ def parse_arguments():
     parser.add_argument('--transformer_layer', type=int, default=2, help='Number of transformer layers')
     parser.add_argument('--dataset', type=str, default='mured', help='Dataset name: mured or rfmid')
     parser.add_argument('--weight_decay', action='store_true')
+    parser.add_argument('--warmup', action='store_true')
     parser.add_argument('--data_aug', type=str, default=None, help='Data augmentation methods or None')
     parser.add_argument('--plm', action='store_true', help='Partial Label Masking training')
     # parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
@@ -511,9 +528,9 @@ if __name__ == "__main__":
     print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
     if args.plm:
-        best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
+        best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
     else:
-        best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay)
+        best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
     evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)

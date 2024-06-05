@@ -12,7 +12,7 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import pandas as pd
 import csv
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, LambdaLR
 from tqdm import tqdm 
 from collections import Counter, defaultdict
 
@@ -119,6 +119,10 @@ def results2allcsv(results_path, all_results, dataset_name):
         
     print(f"[Evaluation all results has been written to *{csv_file_path}*]")
 
+def linear_warmup(epoch):
+    if epoch < 5:
+        return epoch * 5e-2
+    return 1.0
 
 # Kfold cross validation (k=5)
 def train_kfold(model, train_dataset, learning_rate, ctran_model=False, batch_size=32, prefetch_factor=2, num_workers=4, device='cuda', loss_labels='unk'):
@@ -432,11 +436,13 @@ def kullback_leibler_divergence(p, q):
     return kl_div
 
 # train with Partial Label Masking
-def train_plm(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
+def train_plm(model, train_dataset, learning_rate, ctran_model=False, warmup=False, evaluation=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
     print(f"[Training with Partial Label Masking]")
     num_epochs = 35
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
-    scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
+    if warmup:
+        warmup_scheduler = LambdaLR(optimizer, lr_lambda=linear_warmup)
+    step_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
     
     if evaluation:
         # torch.manual_seed(13)
@@ -506,7 +512,16 @@ def train_plm(model, train_dataset, learning_rate, ctran_model=False, evaluation
         ideal_positive_ratio *= np.exp(change_rate * divergence_difference)
         hist.reset()
         
-        scheduler.step()   
+        if epoch < 5:
+            if warmup:
+                print(warmup_scheduler.get_last_lr())
+                warmup_scheduler.step()
+            else:
+                print(step_scheduler.get_last_lr())
+                step_scheduler.step()
+        else:
+            print(step_scheduler.get_last_lr())
+            step_scheduler.step()  
 
         if not evaluation:
             if train_loss < best_train_loss:
