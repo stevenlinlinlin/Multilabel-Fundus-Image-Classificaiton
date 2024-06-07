@@ -43,6 +43,9 @@ class ConvNeXtTransformer_concatGAP(nn.Module):
         encoder_layers = TransformerEncoderLayer(d_model, nhead, dim_feedforward, batch_first=True)#, activation="gelu")
         self.transformer_encoder = TransformerEncoder(encoder_layers, num_transformer_layers, norm=nn.LayerNorm(d_model), enable_nested_tensor=False)
         self.classifier = nn.Linear(d_model*2, num_classes)
+        # self.layer_norm1 = nn.LayerNorm(d_model)
+        # self.classifier = nn.Linear(d_model, num_classes)
+        # self.scale = nn.Parameter(0.1 * torch.ones(d_model))
         
     def forward(self, x):
         x = self.features.forward_features(x)
@@ -54,6 +57,8 @@ class ConvNeXtTransformer_concatGAP(nn.Module):
         x = x.permute(0, 2, 1)
         x = torch.mean(x,dim=2)
         x = torch.cat((x_head, x), dim=1)
+        # x = x + x_head
+        # x = self.layer_norm1(x + x_head)
         x = self.classifier(x)
         return x
     
