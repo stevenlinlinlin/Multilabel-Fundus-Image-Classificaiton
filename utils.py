@@ -442,7 +442,8 @@ def kullback_leibler_divergence(p, q):
 def train_plm(model, train_dataset, learning_rate, ctran_model=False, warmup=False, evaluation=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
     print(f"[Training with Partial Label Masking]")
     num_epochs = 35
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
+    # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
+    optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
     if warmup:
         warmup_scheduler = LambdaLR(optimizer, lr_lambda=linear_warmup)
     step_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)

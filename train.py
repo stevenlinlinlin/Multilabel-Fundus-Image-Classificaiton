@@ -178,6 +178,7 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
     num_epochs = 1
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
+        # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01)
     else:
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     
