@@ -177,10 +177,9 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False, warmup=False):
     num_epochs = 1
     if weight_decay:
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
     else:
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    # optimizer = optim.Adam(model.parameters(), lr=0.00001) # c-tran
     
     if warmup:
         num_epochs += 5
