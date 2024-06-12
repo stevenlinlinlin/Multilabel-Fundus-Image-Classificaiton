@@ -5,3 +5,4 @@ transformers
 opencv-contrib-python
 # imbalanced-learn
 timm
+seaborn
