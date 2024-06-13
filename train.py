@@ -21,15 +21,18 @@ from dataloaders.multilabel_dataset import MultilabelDataset
 from models.resnet import ResNet50, ResNet152
 from models.densenet import DenseNet169, DenseNet161, DenseNet121
 from models.mobilenet import MobileNetV2
-from models.efficientnet import EfficientNetB3, EfficientNetB5, EfficientNetB7
+from models.efficientnet import EfficientNetB3, EfficientNetB5, EfficientNetB7, EfficientNet_v2
 from models.inception import InceptionV3
-from models.vit import ViTForMultiLabelClassification
+from models.vit import ViTForMultiLabelClassification, ViT
 from models.ctran import CTranModel
 from models.utils import custom_replace
 from models.swin_transformer import SwinTransformer
 from models.convnext import ConvNeXt
 from models.mydensenet import myDenseNet1, myDenseNet2, myDenseNet3, myDenseNet4
 from models.myconvnext import ConvNeXtTransformer, ConvNeXtTransformer_concatGAP
+from models.maxvit import MaxViT
+from models.mvit import MViT_v2
+from models.coatnet import CoAtNet
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
@@ -135,11 +138,11 @@ def get_model(model_name, transformer_layer):
     elif model_name == 'mobilenet':
         model = MobileNetV2(num_classes).to(device)
     elif model_name == 'efficientnet':
-        model = EfficientNetB3(num_classes).to(device)
+        model = EfficientNet_v2(num_classes).to(device)
     elif model_name == 'inception':
         model = InceptionV3(num_classes).to(device)
     elif model_name == 'vit':
-        model = ViTForMultiLabelClassification(num_labels=num_classes).to(device)
+        model = ViT(num_labels=num_classes).to(device)
     elif model_name == 'ctran':
         model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
     elif model_name == 'swin':
@@ -152,6 +155,12 @@ def get_model(model_name, transformer_layer):
         model = ConvNeXtTransformer(num_classes, num_transformer_layers=transformer_layer).to(device)
     elif model_name == 'myconvnext_concatGAP':
         model = ConvNeXtTransformer_concatGAP(num_classes, num_transformer_layers=transformer_layer).to(device)
+    elif model_name == 'maxvit':
+        model = MaxViT(num_classes=num_classes).to(device)
+    elif model_name == 'mvit':
+        model = MViT_v2(num_classes=num_classes).to(device)
+    elif model_name == 'coatnet':
+        model = CoAtNet(num_classes=num_classes).to(device)
     
     return model
 

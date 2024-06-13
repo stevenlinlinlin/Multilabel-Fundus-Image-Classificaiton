@@ -1,5 +1,38 @@
 #!/bin/bash
 
+# EfficientNet_v2
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "efficientnet" \
+#     --save_results_path "results/mured/efficientnet-v2_warmup.csv" \
+#     --val \
+#     --weight_decay \
+#     --dataset "mured" \
+#     --warmup
+
+# MaxViT
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "maxvit" \
+#     --save_results_path "results/mured/maxvit-b_warmup.csv" \
+#     --val \
+#     --dataset "mured" \
+#     --warmup
+
+# CoAtNet
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "coatnet" \
+#     --save_results_path "results/mured/coatnet_warmup.csv" \
+#     --val \
+#     --dataset "mured" \
+#     --warmup
+
+# ViT-L
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "vit" \
+#     --save_results_path "results/mured/vit-l_warmup.csv" \
+#     --val \
+#     --dataset "mured" \
+#     --warmup
+
 # Swin-transformer
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "swin" \
