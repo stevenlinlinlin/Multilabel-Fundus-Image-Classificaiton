@@ -1,5 +1,6 @@
 import torchvision.models as models
 import torch.nn as nn
+import timm
 from models.utils import weights_init
 
 
@@ -42,3 +43,12 @@ class EfficientNetB7(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+    
+
+class EfficientNet_v2(nn.Module):
+    def __init__(self, num_classes):
+        super().__init__()
+        self.efficientV2 = timm.create_model('tf_efficientnetv2_xl.in21k_ft_in1k', pretrained=True, num_classes=num_classes)
+
+    def forward(self, x):
+        return self.efficientV2(x)
