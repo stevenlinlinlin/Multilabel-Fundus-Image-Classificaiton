@@ -31,7 +31,7 @@ from models.convnext import ConvNeXt
 from models.mydensenet import myDenseNet1, myDenseNet2, myDenseNet3, myDenseNet4
 from models.myconvnext import ConvNeXtTransformer, ConvNeXtTransformer_concatGAP
 from models.maxvit import MaxViT
-from models.mvit import MViT_v2
+# from models.mvit import MViT_v2
 from models.coatnet import CoAtNet
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
