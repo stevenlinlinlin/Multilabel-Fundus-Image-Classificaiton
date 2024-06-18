@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 from models.utils import weights_init
-from models.transformerencoder import SelfAttnLayer
+from models.c_tran.transformerencoder import SelfAttnLayer
 
 class myDenseNet1(nn.Module):
     def __init__(self, num_classes):

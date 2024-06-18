@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from models.c_tran.utils import positionalencoding2d, weights_init, custom_replace
+from models.utils import positionalencoding2d, weights_init, custom_replace
 from models.c_tran.transformerencoder import SelfAttnLayer
 from models.c_tran.backbone import ResNetBackbone, DenseNetBackbone
 
