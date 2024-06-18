@@ -24,7 +24,7 @@ from models.mobilenet import MobileNetV2
 from models.efficientnet import EfficientNetB3, EfficientNetB5, EfficientNetB7, EfficientNet_v2
 from models.inception import InceptionV3
 from models.vit import ViTForMultiLabelClassification, ViT
-from models.ctran import CTranModel
+from models.c_tran.ctran import CTranModel
 from models.utils import custom_replace
 from models.swin_transformer import SwinTransformer
 from models.convnext import ConvNeXt
@@ -33,6 +33,7 @@ from models.myconvnext import ConvNeXtTransformer, ConvNeXtTransformer_concatGAP
 from models.maxvit import MaxViT
 # from models.mvit import MViT_v2
 from models.coatnet import CoAtNet
+from models.add_gcn import ADD_GCN
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
@@ -158,9 +159,12 @@ def get_model(model_name, transformer_layer):
     elif model_name == 'maxvit':
         model = MaxViT(num_classes=num_classes).to(device)
     elif model_name == 'mvit':
-        model = MViT_v2(num_classes=num_classes).to(device)
+        pass
+        # model = MViT_v2(num_classes=num_classes).to(device)
     elif model_name == 'coatnet':
         model = CoAtNet(num_classes=num_classes).to(device)
+    elif model_name == 'add_gcn':
+        model = ADD_GCN(num_classes=num_classes).to(device)
     
     return model
 
@@ -184,7 +188,7 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False, warmup=False):
-    num_epochs = 1
+    num_epochs = 35
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
         # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01)

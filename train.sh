@@ -1,11 +1,19 @@
 #!/bin/bash
 
+# ADD-GCN
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "add_gcn" \
+#     --save_results_path "results/mured/add_gcn.csv" \
+#     --val \
+#     --weight_decay \
+#     --dataset "mured" \
+#     --warmup
+
 # EfficientNet_v2
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "efficientnet" \
 #     --save_results_path "results/mured/efficientnet-v2_warmup.csv" \
 #     --val \
-#     --weight_decay \
 #     --dataset "mured" \
 #     --warmup
 
