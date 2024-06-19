@@ -34,6 +34,7 @@ from models.maxvit import MaxViT
 # from models.mvit import MViT_v2
 from models.coatnet import CoAtNet
 from models.add_gcn import ADD_GCN
+from models.query2label.query2label import build_q2l
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.get_device_name(0))
@@ -165,6 +166,8 @@ def get_model(model_name, transformer_layer):
         model = CoAtNet(num_classes=num_classes).to(device)
     elif model_name == 'add_gcn':
         model = ADD_GCN(num_classes=num_classes).to(device)
+    elif model_name == 'q2l':
+        model = build_q2l(num_class=num_classes).to(device)
     
     return model
 
