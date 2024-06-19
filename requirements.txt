@@ -1,8 +1,14 @@
 scikit-learn
-matplotlib
-pandas
 transformers
 opencv-contrib-python
-# imbalanced-learn
 timm
+
+# data analysis
+pandas
 seaborn
+matplotlib
+
+# query2label
+addict
+yapf
+einops
