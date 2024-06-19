@@ -180,9 +180,9 @@ class Joiner(nn.Sequential):
 
 
 def build_backbone(num_class, args=None):
-    position_embedding = build_position_encoding()
+    backbone_name = 'swin_L_384_22k'
+    position_embedding = build_position_encoding(backbone=backbone_name)
     train_backbone = True
-    backbone_name = 'CvT_21_384'
     
     if backbone_name in ['swin_B_224_22k', 'swin_B_384_22k', 'swin_L_224_22k', 'swin_L_384_22k']:
         imgsize = int(backbone_name.split('_')[-2])
@@ -208,15 +208,15 @@ def build_backbone(num_class, args=None):
         _tmp_st = OrderedDict({k:v for k, v in clean_state_dict(checkpoint).items() if 'head' not in k})
         _tmp_st_output = backbone.load_state_dict(_tmp_st, strict=False)
         # print(str(_tmp_st_output))
+        bb_num_channels = backbone.dim_embed[-1]
+        backbone.forward = backbone.forward_features
+        backbone.cls_token = False
+        del backbone.head
     else:
         return_interm_layers = False
         backbone = Backbone(backbone_name, train_backbone, return_interm_layers, False, True)
         bb_num_channels = backbone.num_channels
     
-    bb_num_channels = backbone.dim_embed[-1]
-    backbone.forward = backbone.forward_features
-    backbone.cls_token = False
-    del backbone.head
     model = Joiner(backbone, position_embedding, args)
     model.num_channels = bb_num_channels
     return model

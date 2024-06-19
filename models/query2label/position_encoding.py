@@ -58,7 +58,7 @@ class PositionEmbeddingSine(nn.Module):
 def build_position_encoding(hidden_dim=2048, backbone='CvT_w24', position_embedding = 'sine', img_size = 384):
     N_steps = hidden_dim // 2
     
-    if backbone in ['CvT_w24'] :
+    if backbone in ['CvT_w24', 'CvT_21_384'] :
         downsample_ratio = 16
     else:
         downsample_ratio = 32
