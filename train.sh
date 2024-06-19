@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Query2Label
-CUDA_VISIBLE_DEVICES=$1 python train.py \
-    --model "q2l" \
-    --save_results_path "results/mured/q2l.csv" \
-    --val \
-    --dataset "mured" \
-    --warmup
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "q2l" \
+#     --save_results_path "results/mured/q2l.csv" \
+#     --val \
+#     --dataset "mured" \
+#     --warmup
 
 # ADD-GCN
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
@@ -217,11 +217,12 @@ CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --dataset "mured"
 
 # DenseNet161
-# CUDA_VISIBLE_DEVICES=$1 python train.py \
-#     --model "densenet" \
-#     --save_results_path "results/mured/test.csv" \
-#     --val \
-#     --dataset "mured"
+CUDA_VISIBLE_DEVICES=$1 python train.py \
+    --model "densenet" \
+    --save_results_path "results/mured/test.csv" \
+    --val \
+    --dataset "mured"
+    # --loss "asymmetric_loss"
 
 # C-Tran
 # CUDA_VISIBLE_DEVICES=$1 python train.py \

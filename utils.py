@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 import torch.nn.functional as F
 import torch.optim as optim
@@ -17,6 +18,8 @@ from tqdm import tqdm
 from collections import Counter, defaultdict
 
 from models.utils import custom_replace
+from loss_functions.asymmetric import AsymmetricLossOptimized
+from loss_functions.focal import FocalLoss
 eps = np.finfo(float).eps
 
 def count_labels(dataset, num_classes):
@@ -439,11 +442,20 @@ def kullback_leibler_divergence(p, q):
     return kl_div
 
 # train with Partial Label Masking
-def train_plm(model, train_dataset, learning_rate, ctran_model=False, warmup=False, evaluation=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda'):
+def train_plm(model, train_dataset, learning_rate, ctran_model=False, loss_labels='all', warmup=False, evaluation=False, num_classes=20, batch_size=16, prefetch_factor=64, num_workers=28, device='cuda', loss='bce'):
     print(f"[Training with Partial Label Masking]")
     num_epochs = 35
     # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01) # for transformers
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
+    
+    # Loss function
+    if loss == 'focal_loss':
+        criterion = FocalLoss()
+    elif loss == 'asymmetric_loss':
+        criterion = AsymmetricLossOptimized()
+    else:
+        criterion = nn.BCEWithLogitsLoss(reduction='sum')
+    
     if warmup:
         warmup_scheduler = LambdaLR(optimizer, lr_lambda=linear_warmup)
     step_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
@@ -504,7 +516,8 @@ def train_plm(model, train_dataset, learning_rate, ctran_model=False, warmup=Fal
                 optimizer.zero_grad()
                 outputs = model(inputs)
                 # print(outputs.shape, labels.shape)
-                loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none') # sigmoid + BCELoss
+                # loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none') # sigmoid + BCELoss
+                loss_out = criterion(outputs, labels)
             
             hist.update_histogram(batch['labels'], outputs.sigmoid().detach().cpu().numpy())
             loss_out = (loss_out * plm_mask).sum()
@@ -565,7 +578,8 @@ def train_plm(model, train_dataset, learning_rate, ctran_model=False, warmup=Fal
                 else:
                     inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                     outputs = model(inputs)
-                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
+                    # loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
+                    loss_out = criterion(outputs, labels)
                     
                 val_loss += loss_out.item()
 

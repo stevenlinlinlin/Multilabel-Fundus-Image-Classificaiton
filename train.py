@@ -18,6 +18,8 @@ from tqdm import tqdm
 # Custom imports
 from utils import *
 from dataloaders.multilabel_dataset import MultilabelDataset
+from loss_functions.focal import FocalLoss
+from loss_functions.asymmetric import AsymmetricLossOptimized
 from models.resnet import ResNet50, ResNet152
 from models.densenet import DenseNet169, DenseNet161, DenseNet121
 from models.mobilenet import MobileNetV2
@@ -190,13 +192,24 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False, warmup=False):
+def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
     num_epochs = 35
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
         # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01)
     else:
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+        
+    # Loss function
+    if loss == 'focal_loss':
+        print("--Focal Loss--")
+        criterion = FocalLoss()
+    elif loss == 'asymmetric_loss':
+        print("--Asymmetric Loss--")
+        criterion = AsymmetricLossOptimized()
+    else:
+        print("--BCE Loss--")
+        criterion = nn.BCEWithLogitsLoss(reduction='sum')
     
     if warmup:
         num_epochs += 5
@@ -255,7 +268,8 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
                 optimizer.zero_grad()
                 outputs = model(inputs)
                 # print(outputs.shape, labels.shape)
-                loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
+                # loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
+                loss_out = criterion(outputs, labels)
             
             train_loss += loss_out.item()
             loss_out.backward()
@@ -312,7 +326,8 @@ def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=Fal
                 else:
                     inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                     outputs = model(inputs)
-                    loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
+                    # loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
+                    loss_out = criterion(outputs, labels)
                     
                 val_loss += loss_out.item()
 
@@ -531,6 +546,7 @@ def parse_arguments():
     parser.add_argument('--warmup', action='store_true')
     parser.add_argument('--data_aug', type=str, default=None, help='Data augmentation methods or None')
     parser.add_argument('--plm', action='store_true', help='Partial Label Masking training')
+    parser.add_argument('--loss', type=str, default='bce', help='Loss function: bce, focal, asymmetric')
     # parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
     # parser.add_argument('--training_labels_path', type=str)
     args = parser.parse_args()
@@ -546,9 +562,9 @@ if __name__ == "__main__":
     print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
     if args.plm:
-        best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device)
+        best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device, loss=args.loss)
     else:
-        best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup)
+        best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
     evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
