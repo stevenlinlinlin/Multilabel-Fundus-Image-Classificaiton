@@ -12,9 +12,10 @@ class CTranModel(nn.Module):
         self.use_lmt = use_lmt
 
         # image feature backbone
-        self.backbone = DenseNetBackbone()
-        # hidden = 2048 # ResNet
-        hidden = 2208 # DenseNet
+        self.backbone = ResNetBackbone()
+        hidden = 2048 # ResNet
+        # self.backbone = DenseNetBackbone()
+        # hidden = 2208 # DenseNet
 
         self.downsample = False
         if self.downsample:
