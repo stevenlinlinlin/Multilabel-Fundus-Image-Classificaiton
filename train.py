@@ -38,6 +38,7 @@ from models.coatnet import CoAtNet
 from models.add_gcn import ADD_GCN
 from models.query2label.query2label import build_q2l
 from models.ml_decoder import create_model
+from models.tresnet import create_tresnet_model
 
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -45,7 +46,6 @@ print(torch.cuda.get_device_name(0))
 
 prefetch_factor = 64
 num_workers = 28
-batch_size = 16
 # selected_data  = 'augmented' # 'original' or 'augmented' to evaluate the model on the original or augmented dataset
 # auc_fig_path = 'results/auc/densenet161.png'
 # results_path = 'results/densenet161_90.csv'
@@ -56,7 +56,7 @@ loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss r
 ## Transformations adapted for the dataset
 transform = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((384, 384)),
+    transforms.Resize((448, 448)),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
     transforms.RandomRotation(180),
@@ -135,7 +135,7 @@ def dataset2train(dataset_name, data_aug=None):
 
 
 # Models
-def get_model(model_name, transformer_layer):
+def get_model(model_name, transformer_layer, num_classes):
     if model_name == 'resnet':
         model = ResNet152(num_classes).to(device)
     elif model_name == 'densenet':
@@ -174,11 +174,13 @@ def get_model(model_name, transformer_layer):
         model = build_q2l(num_class=num_classes).to(device)
     elif model_name == 'ml_decoder':
         model = create_model(num_classes=num_classes).to(device)
+    elif model_name == 'tresnet':
+        model = create_tresnet_model(num_classes=num_classes).to(device)
     
     return model
 
 # datasets
-def get_dataset(num_classes, training_labels_path, training_images_dir, da_training_images_dir, evaluation_labels_path, evaluation_images_dir):
+def get_dataset(num_classes, batch_size, training_labels_path, training_images_dir, da_training_images_dir, evaluation_labels_path, evaluation_images_dir):
     # train dataset
     train_dataset = MultilabelDataset(ann_dir=training_labels_path,
                                 root_dir=training_images_dir,
@@ -196,7 +198,7 @@ def get_dataset(num_classes, training_labels_path, training_images_dir, da_train
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, train_dataset, learning_rate, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
+def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
     num_epochs = 35
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
@@ -543,6 +545,7 @@ def parse_arguments():
     parser.add_argument('--save_results_path', type=str, default='results/myconvnext_concatGAP.csv', help='Path to save the evaluation results')
     parser.add_argument('--ctran_model', action='store_true', help='Use CTran model')
     parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
+    parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--val', action='store_true', help='split the training set into training and validation')
     parser.add_argument('--transformer_layer', type=int, default=2, help='Number of transformer layers')
     parser.add_argument('--dataset', type=str, default='mured', help='Dataset name: mured or rfmid')
@@ -560,15 +563,15 @@ def parse_arguments():
 if __name__ == "__main__":
     args = parse_arguments()
     num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index = dataset2train(args.dataset, args.data_aug)
-    train_dataset, test_dataset, test_loader = get_dataset(num_classes=num_classes, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir)
-    model = get_model(args.model, args.transformer_layer)
+    train_dataset, test_dataset, test_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir)
+    model = get_model(args.model, args.transformer_layer, num_classes)
     print(f"===== Model: {model.__class__.__name__} =====")
     print(f"<training_labels_path: {training_labels_path}>")
     print("******************** Training   ********************")
     if args.plm:
-        best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device, loss=args.loss)
+        best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=args.batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device, loss=args.loss)
     else:
-        best_model_state = train(model, train_dataset, args.lr, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
+        best_model_state = train(model, train_dataset, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
     evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
