@@ -208,13 +208,13 @@ def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, ev
         
     # Loss function
     if loss == 'focal_loss':
-        print("--Focal Loss--")
+        print("[Focal Loss]")
         criterion = FocalLoss()
     elif loss == 'asymmetric_loss':
-        print("--Asymmetric Loss--")
+        print("[Asymmetric Loss]")
         criterion = AsymmetricLossOptimized()
     else:
-        print("--BCE Loss--")
+        print("[BCE Loss]")
         criterion = nn.BCEWithLogitsLoss(reduction='sum')
     
     if warmup:
