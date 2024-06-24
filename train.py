@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim.lr_scheduler import LambdaLR, StepLR
+from torch.optim.lr_scheduler import LambdaLR, StepLR, OneCycleLR
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score, precision_score, recall_score
@@ -20,6 +20,7 @@ from utils import *
 from dataloaders.multilabel_dataset import MultilabelDataset
 from loss_functions.focal import FocalLoss
 from loss_functions.asymmetric import AsymmetricLossOptimized
+from loss_functions.polyloss import Poly1CrossEntropyLoss, Poly1FocalLoss
 from models.resnet import ResNet50, ResNet152
 from models.densenet import DenseNet169, DenseNet161, DenseNet121
 from models.mobilenet import MobileNetV2
@@ -213,16 +214,22 @@ def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, ev
     elif loss == 'asymmetric_loss':
         print("[Asymmetric Loss]")
         criterion = AsymmetricLossOptimized()
-    else:
+    elif loss == 'bce':
         print("[BCE Loss]")
         criterion = nn.BCEWithLogitsLoss(reduction='sum')
+    elif loss == 'poly_ce':
+        print("[Poly Loss (bce)]")
+        criterion = Poly1CrossEntropyLoss(num_classes, reduction='sum')
+    elif loss == 'poly_focal':
+        print("[Poly Loss (Focal)]")
+        criterion = Poly1FocalLoss(num_classes, reduction='sum')
     
     if warmup:
         num_epochs += 5
         warmup_scheduler = LambdaLR(optimizer, lr_lambda=linear_warmup)
         
     step_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
-    # scheduler = StepLR(optimizer, step_size=10, gamma=0.1) 
+    # step_scheduler = OneCycleLR(optimizer, max_lr=learning_rate, steps_per_epoch=10, epochs=num_epochs, div_factor=10, final_div_factor=100)
         
     if evaluation:
         # torch.manual_seed(13)
