@@ -180,7 +180,7 @@ class Joiner(nn.Sequential):
 
 
 def build_backbone(num_class, args=None):
-    backbone_name = 'swin_L_384_22k'
+    backbone_name = 'swin_L_384_22k' # 'CvT_w24' or 'swin_L_384_22k'
     position_embedding = build_position_encoding(backbone=backbone_name)
     train_backbone = True
     
