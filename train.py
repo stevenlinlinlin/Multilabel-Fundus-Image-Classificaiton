@@ -55,7 +55,7 @@ num_workers = 28
 loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss respectively
 
 # Data transforms
-## Transformations adapted for the dataset
+## Transformations adapted for the dataset training
 transform = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize((448, 448)),
@@ -66,6 +66,13 @@ transform = transforms.Compose([
     # transforms.RandomAffine(0, translate=(0.1, 0.1)),
     transforms.ToTensor(),
 ])
+## Transformations adapted for the dataset testing
+transform4test = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.Resize((448, 448)),
+    transforms.ToTensor(),
+])
+
 ## Transformations from the original paper
 #### For ViT
 # transform = transforms.Compose([
@@ -188,13 +195,13 @@ def get_dataset(num_classes, batch_size, training_labels_path, training_images_d
                                 num_labels=num_classes,
                                 transform=transform, known_labels=1, testing=False, da_root_dir=da_training_images_dir)
 
-    # val dataset
+    # test dataset
     test_dataset = MultilabelDataset(ann_dir=evaluation_labels_path,
                                 root_dir=evaluation_images_dir,
                                 num_labels=num_classes,
-                                transform=transform, known_labels=0, testing=True)
+                                transform=transform4test, known_labels=0, testing=True)
 
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
     return train_dataset, test_dataset, test_loader
 
 
@@ -429,7 +436,8 @@ def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, ev
 # Evaluate the model on the test set
 def evaluate(model, best_model_state, test_loader, results_path, evaluation_labels_path, dataset_name, normal_index=1, ctran_model=False, best_model=False):
     if best_model:
-        print("------ Best model evaluation -----")
+        print()
+        print("~~~~~~~~~~ Best model evaluation ~~~~~~~~~~")
         model.load_state_dict(best_model_state)
         
     model.eval()
@@ -550,7 +558,7 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
         os.makedirs('results/rfmid', exist_ok=True)
     elif dataset_name == 'mured':
         os.makedirs('results/mured', exist_ok=True)
-    avg_results = result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores)
+    avg_results = result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores, best_model)
     # print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
     
     normal_auc = auc_scores.pop(normal_index)
@@ -562,7 +570,7 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
     ML_score = (mAP + average_auc) / 2
     eval_results = [f1_macro, mAP, average_auc, ML_score, normal_f1, normal_auc, (ML_score + normal_auc) / 2]
     eval_results = [str(round(result, 3)) for result in eval_results]
-    results2allcsv(results_path, eval_results, avg_results, dataset_name, overall_precision, overall_recall, overall_f1)
+    results2allcsv(results_path, eval_results, avg_results, dataset_name, overall_precision, overall_recall, overall_f1, best_model)
     print(f'===== Evaluation results =====')
     print(f'OP: {overall_precision}, OR: {overall_recall}, OF1: {overall_f1}, CP: {avg_results[0]}, CR: {avg_results[1]}, CF1: {avg_results[2]}, mAP: {avg_results[3]}, Average AUC: {avg_results[4]}')
     print(f'ML_F1: {f1_macro:.3f}, ML_mAP: {mAP:.3f}, ML_AUC: {average_auc:.3f}, ML_Score: {ML_score:.3f}, Bin_F1: {normal_f1:.3f}, Bin_AUC: {normal_auc:.3f}, Model_Score: {(ML_score + normal_auc) / 2:.3f}')
@@ -605,4 +613,4 @@ if __name__ == "__main__":
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
     evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
-    # evaluate(model, best_model_state, test_loader, args.save_results_path, ctran_model=args.ctran_model, best_model =True)
+    evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)

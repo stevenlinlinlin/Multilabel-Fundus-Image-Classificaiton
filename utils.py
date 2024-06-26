@@ -70,7 +70,10 @@ def plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path):
     plt.legend(loc="lower right")
     plt.savefig(auc_fig_path)
     
-def result2csv(results_path, evaluation_labels_path, precision_list, recall_list, f1_list, ap_list, auc_list):
+def result2csv(results_path, evaluation_labels_path, precision_list, recall_list, f1_list, ap_list, auc_list, best_model):
+    if best_model:
+        results_path = results_path.replace('.csv', '_best.csv')
+        
     print(f"[Writing each label results to {results_path}]")
     class_names = pd.read_csv(evaluation_labels_path).columns.tolist()[1:]
     with open(results_path, 'w', newline='') as file:
@@ -104,11 +107,14 @@ def result2csv(results_path, evaluation_labels_path, precision_list, recall_list
     avg_results = [str(round(result, 3)) for result in avg_results]
     return avg_results
         
-def results2allcsv(results_path, all_results, avg_results, dataset_name, overall_precision, overall_recall, overall_f1):
+def results2allcsv(results_path, all_results, avg_results, dataset_name, overall_precision, overall_recall, overall_f1, best_model):
     if dataset_name == 'mured':
         csv_file_path = 'results/all_models_results_mured.csv'
     elif dataset_name == 'rfmid':
         csv_file_path = 'results/all_models_results_rfmid.csv'
+        
+    if best_model:
+        csv_file_path = csv_file_path.replace('.csv', '_best.csv')
     
     if not os.path.exists(csv_file_path):
         column_names = ['name', 'OP', 'OR', 'OF1', 'CP', 'CR', 'CF1', 'mAP', 'Avg_AUC', 'ML_F1',  'ML_mAP', 'ML_AUC', 'ML_Score', 'Bin_F1', 'Bin_AUC', 'Model_Score']
