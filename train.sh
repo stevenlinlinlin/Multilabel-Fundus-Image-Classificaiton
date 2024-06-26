@@ -1,17 +1,31 @@
 #!/bin/bash
 
+# MCAR with ResNet101
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "mcar" \
+#     --save_results_path "results/mured/mcar_resnet101.csv" \
+#     --val \
+#     --dataset "mured"
+    
 # ML-Decoder
-CUDA_VISIBLE_DEVICES=$1 python train.py \
-    --model "ml_decoder" \
-    --save_results_path "results/mured/ml_decoder.csv" \
-    --val \
-    --dataset "mured" \
-    --warmup
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "ml_decoder" \
+#     --save_results_path "results/mured/ml_decoder.csv" \
+#     --val \
+#     --dataset "mured" \
+#     --warmup
 
 # Query2Label
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "q2l" \
-#     --save_results_path "results/mured/q2l.csv" \
+#     --save_results_path "results/mured/q2l_swinL.csv" \
+#     --val \
+#     --dataset "mured" \
+#     --warmup
+
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "q2l" \
+#     --save_results_path "results/mured/q2l_CvT.csv" \
 #     --val \
 #     --dataset "mured" \
 #     --warmup
@@ -225,11 +239,11 @@ CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --dataset "mured"
 
 # DenseNet161
-# CUDA_VISIBLE_DEVICES=$1 python train.py \
-#     --model "densenet" \
-#     --save_results_path "results/mured/test.csv" \
-#     --val \
-#     --dataset "mured"
+CUDA_VISIBLE_DEVICES=$1 python train.py \
+    --model "densenet" \
+    --save_results_path "results/mured/test_1.csv" \
+    --val \
+    --dataset "mured"
     # --loss "asymmetric_loss"
 
 # C-Tran

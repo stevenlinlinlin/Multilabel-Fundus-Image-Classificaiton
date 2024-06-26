@@ -40,6 +40,7 @@ from models.add_gcn import ADD_GCN
 from models.query2label.query2label import build_q2l
 from models.ml_decoder import create_model
 from models.tresnet import create_tresnet_model
+from models.mcar import mcar_resnet101
 
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -164,9 +165,6 @@ def get_model(model_name, transformer_layer, num_classes):
         model = ConvNeXtTransformer_concatGAP(num_classes, num_transformer_layers=transformer_layer).to(device)
     elif model_name == 'maxvit':
         model = MaxViT(num_classes=num_classes).to(device)
-    elif model_name == 'mvit':
-        pass
-        # model = MViT_v2(num_classes=num_classes).to(device)
     elif model_name == 'coatnet':
         model = CoAtNet(num_classes=num_classes).to(device)
     elif model_name == 'add_gcn':
@@ -177,6 +175,8 @@ def get_model(model_name, transformer_layer, num_classes):
         model = create_model(num_classes=num_classes).to(device)
     elif model_name == 'tresnet':
         model = create_tresnet_model(num_classes=num_classes).to(device)
+    elif model_name == 'mcar':
+        model = mcar_resnet101(num_classes=num_classes,  ps='gwp', topN=4, threshold=0.5, pretrained=True).to(device)
     
     return model
 
@@ -208,11 +208,14 @@ def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, ev
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
         
     # Loss function
-    if loss == 'focal_loss':
+    if model.__class__.__name__ == "MCARResnet":
+        criterion = nn.BCELoss()
+    elif loss == 'focal_loss':
         print("[Focal Loss]")
         criterion = FocalLoss()
     elif loss == 'asymmetric_loss':
         print("[Asymmetric Loss]")
+        # criterion = AsymmetricLossOptimized(gamma_neg=1, gamma_pos=0)
         criterion = AsymmetricLossOptimized()
     elif loss == 'bce':
         print("[BCE Loss]")
@@ -282,7 +285,10 @@ def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, ev
                 outputs = model(inputs)
                 # print(outputs.shape, labels.shape)
                 # loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum() # sigmoid + BCELoss
-                loss_out = criterion(outputs, labels)
+                if model.__class__.__name__ == "MCARResnet":
+                    loss_out = criterion(outputs[0], labels) + criterion(outputs[1], labels)
+                else:
+                    loss_out = criterion(outputs, labels)
             
             train_loss += loss_out.item()
             loss_out.backward()
@@ -336,11 +342,17 @@ def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, ev
                     
                     loss = F.binary_cross_entropy_with_logits(outputs.view(labels.size(0),-1),labels.cuda(), reduction='none')
                     loss_out = (unk_mask.cuda()*loss).sum()
+                    outputs = F.sigmoid(outputs)
                 else:
                     inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                     outputs = model(inputs)
                     # loss_out = F.binary_cross_entropy_with_logits(outputs, labels, reduction='none').sum()
-                    loss_out = criterion(outputs, labels)
+                    if model.__class__.__name__ == "MCARResnet":
+                        loss_out = criterion(outputs[0], labels) + criterion(outputs[1], labels)
+                        outputs  = torch.max(outputs[0], outputs[1])
+                    else:
+                        loss_out = criterion(outputs, labels)
+                        outputs = F.sigmoid(outputs)
                     
                 val_loss += loss_out.item()
 
@@ -361,19 +373,19 @@ def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, ev
                 # total_samples += labels.size(0)
                 
                 ## method 3. AUC
-                outputs_np = F.sigmoid(outputs).cpu().numpy()
+                outputs_np = outputs.cpu().numpy()
                 # outputs_np = outputs.cpu().numpy()
                 labels_np = labels.cpu().numpy()
                 all_preds.extend(outputs_np)
                 all_labels.extend(labels_np)
                 
                 ## method 4. mAP
-                all_preds_4.append(F.sigmoid(outputs).cpu())
+                all_preds_4.append(outputs.cpu())
                 # all_preds_4.append(outputs.cpu())
                 all_labels_4.append(labels.cpu())
                 
                 ## method 5. F1 Score
-                predicted = F.sigmoid(outputs).cpu() > 0.5
+                predicted = outputs.cpu() > 0.5
                 # predicted = outputs.cpu() > 0.5
                 all_preds_5.append(predicted.numpy())
                 all_labels_5.append(labels.cpu().numpy())
@@ -449,6 +461,11 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
             else:
                 inputs, labels = batch['image'].to(device), batch['labels'].to(device)
                 outputs = model(inputs)
+                
+            if model.__class__.__name__ == "MCARResnet":
+                outputs  = torch.max(outputs[0], outputs[1])
+            else:
+                outputs = F.sigmoid(outputs)
                 
             # Calculate accuracy
             ## method 1. Strictly Accuracy
