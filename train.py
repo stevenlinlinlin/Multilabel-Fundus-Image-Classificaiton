@@ -10,7 +10,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR, StepLR, OneCycleLR
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
-from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score, precision_score, recall_score
+from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score, precision_score, recall_score, precision_recall_fscore_support
 from sklearn.model_selection import KFold
 import copy
 from tqdm import tqdm 
@@ -200,7 +200,7 @@ def get_dataset(num_classes, batch_size, training_labels_path, training_images_d
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
-    num_epochs = 35
+    num_epochs = 1
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
         # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01)
@@ -484,19 +484,19 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
             # total_samples += labels.size(0)
             
             ## method 3. AUC
-            outputs_np = F.sigmoid(outputs).cpu().numpy()
+            outputs_np = outputs.cpu().numpy()
             # outputs_np = outputs.cpu().numpy()
             labels_np = labels.cpu().numpy()
             all_preds.extend(outputs_np)
             all_labels.extend(labels_np)
             
             ## method 4. mAP
-            all_preds_4.append(F.sigmoid(outputs).cpu())
+            all_preds_4.append(outputs.cpu())
             # all_preds_4.append(outputs.cpu())
             all_labels_4.append(labels.cpu())
             
             ## method 5. F1 Score
-            predicted = F.sigmoid(outputs).cpu() > 0.5
+            predicted = outputs.cpu() > 0.5
             # predicted = outputs.cpu() > 0.5
             all_preds_5.append(predicted.numpy())
             all_labels_5.append(labels.cpu().numpy())
@@ -539,6 +539,12 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
     all_labels_5 = np.vstack(all_labels_5)
     f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
     f1_list = list(f1_score(all_labels_5, all_preds_5, average=None))
+    ## method 6. Overall precision and recall and F1
+    overall_precision, overall_recall, overall_f1, _ = precision_recall_fscore_support(all_labels_5.ravel(), all_preds_5.ravel(), average='binary')
+    overall_precision = round(overall_precision, 3)
+    overall_recall = round(overall_recall, 3)
+    overall_f1 = round(overall_f1, 3)
+    # print(overall_precision, overall_recall, overall_f1)
     
     if dataset_name == 'rfmid':
         os.makedirs('results/rfmid', exist_ok=True)
@@ -556,9 +562,9 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
     ML_score = (mAP + average_auc) / 2
     eval_results = [f1_macro, mAP, average_auc, ML_score, normal_f1, normal_auc, (ML_score + normal_auc) / 2]
     eval_results = [str(round(result, 3)) for result in eval_results]
-    results2allcsv(results_path, eval_results, avg_results, dataset_name)
+    results2allcsv(results_path, eval_results, avg_results, dataset_name, overall_precision, overall_recall, overall_f1)
     print(f'===== Evaluation results =====')
-    print(f'Average Precision: {avg_results[0]}, Average Recall: {avg_results[1]}, F1_macro: {avg_results[2]}, mAP: {avg_results[3]}, Average AUC: {avg_results[4]}')
+    print(f'OP: {overall_precision}, OR: {overall_recall}, OF1: {overall_f1}, CP: {avg_results[0]}, CR: {avg_results[1]}, CF1: {avg_results[2]}, mAP: {avg_results[3]}, Average AUC: {avg_results[4]}')
     print(f'ML_F1: {f1_macro:.3f}, ML_mAP: {mAP:.3f}, ML_AUC: {average_auc:.3f}, ML_Score: {ML_score:.3f}, Bin_F1: {normal_f1:.3f}, Bin_AUC: {normal_auc:.3f}, Model_Score: {(ML_score + normal_auc) / 2:.3f}')
     # plot_auc_curve(all_preds, all_labels, evaluation_labels_path, auc_fig_path)
 
