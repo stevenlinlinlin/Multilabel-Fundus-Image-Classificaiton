@@ -58,7 +58,7 @@ loss_labels = 'all' # 'all' or 'unk'for all labels or only unknown labels loss r
 ## Transformations adapted for the dataset training
 transform = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((448, 448)),
+    transforms.Resize((384, 384)),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
     transforms.RandomRotation(180),
@@ -69,7 +69,7 @@ transform = transforms.Compose([
 ## Transformations adapted for the dataset testing
 transform4test = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((448, 448)),
+    transforms.Resize((384, 384)),
     transforms.ToTensor(),
 ])
 
