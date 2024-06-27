@@ -206,7 +206,7 @@ def get_dataset(num_classes, batch_size, training_labels_path, training_images_d
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, train_dataset, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
+def train(model, num_classes, train_dataset, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
     num_epochs = 1
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
@@ -609,7 +609,7 @@ if __name__ == "__main__":
     if args.plm:
         best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=args.batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device, loss=args.loss)
     else:
-        best_model_state = train(model, train_dataset, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
+        best_model_state = train(model, num_classes, train_dataset, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
     evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
