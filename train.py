@@ -157,7 +157,7 @@ def get_model(model_name, transformer_layer, num_classes):
     elif model_name == 'inception':
         model = InceptionV3(num_classes).to(device)
     elif model_name == 'vit':
-        model = ViT(num_labels=num_classes).to(device)
+        model = ViT(num_classes).to(device)
     elif model_name == 'ctran':
         model = CTranModel(num_labels=num_classes,use_lmt=True,pos_emb=False,layers=3,heads=4,dropout=0.1).to(device)
     elif model_name == 'swin':
