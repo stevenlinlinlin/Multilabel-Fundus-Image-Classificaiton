@@ -99,6 +99,9 @@ transform4test = transforms.Compose([
 
 
 def dataset2train(dataset_name, data_aug=None):
+    valid_labels_path = ''
+    valid_images_dir = ''
+    
     if data_aug:
         # print(f"[Data Augmentation: {data_aug}]")
         if dataset_name == 'rfmid':
@@ -119,6 +122,16 @@ def dataset2train(dataset_name, data_aug=None):
             training_images_dir = 'data/fundus/MuReD/images/images'
             evaluation_images_dir = 'data/fundus/MuReD/images/images'
             da_training_images_dir = f"data/fundus/MuReD/images/{data_aug}"
+        elif dataset_name == 'itri':
+            num_classes = 15
+            normal_class_index = 1
+            training_labels_path = f"data/fundus/MuReD/{data_aug}_train_data.csv"
+            evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
+            training_images_dir = 'data/fundus/MuReD/images/images'
+            evaluation_images_dir = 'data/fundus/MuReD/images/images'
+            da_training_images_dir = f"data/fundus/MuReD/images/{data_aug}"
+            valid_labels_path = ''
+            valid_images_dir = ''
     else:
         # print("[Original Data]")
         if dataset_name == 'rfmid':
@@ -139,8 +152,18 @@ def dataset2train(dataset_name, data_aug=None):
             training_images_dir = 'data/fundus/MuReD/images/images'
             evaluation_images_dir = 'data/fundus/MuReD/images/images'
             da_training_images_dir = 'data/fundus/MuReD/images/images' # 'data/fundus/MuReD/images/xxxx' or None
+        elif dataset_name == 'itri':
+            num_classes = 15
+            normal_class_index = 1
+            training_labels_path = 'data/fundus/MuReD/train_data.csv'
+            evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
+            training_images_dir = 'data/fundus/MuReD/images/images'
+            evaluation_images_dir = 'data/fundus/MuReD/images/images'
+            da_training_images_dir = 'data/fundus/MuReD/images/images'
+            valid_labels_path = ''
+            valid_images_dir = ''
         
-    return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index
+    return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index, valid_labels_path, valid_images_dir
 
 
 # Models
@@ -188,12 +211,22 @@ def get_model(model_name, transformer_layer, num_classes):
     return model
 
 # datasets
-def get_dataset(num_classes, batch_size, training_labels_path, training_images_dir, da_training_images_dir, evaluation_labels_path, evaluation_images_dir):
+def get_dataset(num_classes, batch_size, training_labels_path, training_images_dir, da_training_images_dir, evaluation_labels_path, evaluation_images_dir, valid_labels_path, valid_images_dir):
+    train_loader = None
+    val_loader = None
     # train dataset
     train_dataset = MultilabelDataset(ann_dir=training_labels_path,
                                 root_dir=training_images_dir,
                                 num_labels=num_classes,
                                 transform=transform, known_labels=1, testing=False, da_root_dir=da_training_images_dir)
+    
+    if valid_labels_path:
+        valid_dataset = MultilabelDataset(ann_dir=valid_labels_path,
+                                root_dir=valid_images_dir,
+                                num_labels=num_classes,
+                                transform=transform4test, known_labels=0, testing=True)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
+        val_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
 
     # test dataset
     test_dataset = MultilabelDataset(ann_dir=evaluation_labels_path,
@@ -202,12 +235,12 @@ def get_dataset(num_classes, batch_size, training_labels_path, training_images_d
                                 transform=transform4test, known_labels=0, testing=True)
 
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
-    return train_dataset, test_dataset, test_loader
+    return train_dataset, test_dataset, test_loader, train_loader, val_loader
 
 
 # trainset to train and validation (0.8, 0.2)   
-def train(model, num_classes, train_dataset, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
-    num_epochs = 1
+def train(model, num_classes, train_dataset, train_loader, val_loader, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
+    num_epochs = 15
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
         # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01)
@@ -240,25 +273,29 @@ def train(model, num_classes, train_dataset, learning_rate, batch_size, ctran_mo
         
     step_scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
     # step_scheduler = OneCycleLR(optimizer, max_lr=learning_rate, steps_per_epoch=10, epochs=num_epochs, div_factor=10, final_div_factor=100)
-        
-    if evaluation:
-        # torch.manual_seed(13)
-        total_size = len(train_dataset)
-        val_size = int(total_size * 0.2)
-        train_size = total_size - val_size
-        train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
-        
-        # train_label_counts = count_labels(train_dataset, num_classes)
-        # val_label_counts = count_labels(val_dataset, num_classes)
-        # sorted_train_label_counts = dict(sorted(train_label_counts.items()))
-        # sorted_val_label_counts = dict(sorted(val_label_counts.items()))
-        # print("Train Label Counts:     ", sorted_train_label_counts)
-        # print("Validation Label Counts:", sorted_val_label_counts)
-        
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
+    
+    
+    if val_loader is None:
+        if evaluation:
+            # torch.manual_seed(13)
+            total_size = len(train_dataset)
+            val_size = int(total_size * 0.2)
+            train_size = total_size - val_size
+            train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
+            
+            # train_label_counts = count_labels(train_dataset, num_classes)
+            # val_label_counts = count_labels(val_dataset, num_classes)
+            # sorted_train_label_counts = dict(sorted(train_label_counts.items()))
+            # sorted_val_label_counts = dict(sorted(val_label_counts.items()))
+            # print("Train Label Counts:     ", sorted_train_label_counts)
+            # print("Validation Label Counts:", sorted_val_label_counts)
+            
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
+        else:
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
     else:
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
+        evaluation = True
 
     best_train_loss = float('inf')
     best_val_loss = float('inf')
@@ -600,8 +637,8 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index = dataset2train(args.dataset, args.data_aug)
-    train_dataset, test_dataset, test_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir)
+    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index, valid_labels_path, valid_images_dir = dataset2train(args.dataset, args.data_aug)
+    train_dataset, test_dataset, test_loader, train_loader, val_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir, valid_labels_path=valid_labels_path, valid_images_dir=valid_images_dir)
     model = get_model(args.model, args.transformer_layer, num_classes)
     print(f"===== Model: {model.__class__.__name__} =====")
     print(f"<training_labels_path: {training_labels_path}>")
@@ -609,7 +646,7 @@ if __name__ == "__main__":
     if args.plm:
         best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=args.batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device, loss=args.loss)
     else:
-        best_model_state = train(model, num_classes, train_dataset, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
+        best_model_state = train(model, num_classes, train_dataset, train_loader, val_loader, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
     evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
