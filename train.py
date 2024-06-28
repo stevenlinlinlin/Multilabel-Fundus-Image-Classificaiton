@@ -124,12 +124,12 @@ def dataset2train(dataset_name, data_aug=None):
             da_training_images_dir = f"data/fundus/MuReD/images/{data_aug}"
         elif dataset_name == 'itri':
             num_classes = 15
-            normal_class_index = 1
-            training_labels_path = f"data/fundus/MuReD/{data_aug}_train_data.csv"
-            evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
-            training_images_dir = 'data/fundus/MuReD/images/images'
-            evaluation_images_dir = 'data/fundus/MuReD/images/images'
-            da_training_images_dir = f"data/fundus/MuReD/images/{data_aug}"
+            normal_class_index = 14
+            training_labels_path = f"data/{data_aug}_train_data.csv"
+            evaluation_labels_path = 'data/test_data.csv'
+            training_images_dir = ''
+            evaluation_images_dir = ''
+            da_training_images_dir = f""
             valid_labels_path = ''
             valid_images_dir = ''
     else:
@@ -154,13 +154,13 @@ def dataset2train(dataset_name, data_aug=None):
             da_training_images_dir = 'data/fundus/MuReD/images/images' # 'data/fundus/MuReD/images/xxxx' or None
         elif dataset_name == 'itri':
             num_classes = 15
-            normal_class_index = 1
-            training_labels_path = 'data/fundus/MuReD/train_data.csv'
-            evaluation_labels_path = 'data/fundus/MuReD/test_data.csv'
-            training_images_dir = 'data/fundus/MuReD/images/images'
-            evaluation_images_dir = 'data/fundus/MuReD/images/images'
-            da_training_images_dir = 'data/fundus/MuReD/images/images'
-            valid_labels_path = ''
+            normal_class_index = 14
+            training_labels_path = 'data/train_data.csv'
+            evaluation_labels_path = 'data/test_data.csv'
+            training_images_dir = ''
+            evaluation_images_dir = ''
+            da_training_images_dir = ''
+            valid_labels_path = 'data/val_data.csv'
             valid_images_dir = ''
         
     return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index, valid_labels_path, valid_images_dir
@@ -211,20 +211,20 @@ def get_model(model_name, transformer_layer, num_classes):
     return model
 
 # datasets
-def get_dataset(num_classes, batch_size, training_labels_path, training_images_dir, da_training_images_dir, evaluation_labels_path, evaluation_images_dir, valid_labels_path, valid_images_dir):
+def get_dataset(num_classes, batch_size, training_labels_path, training_images_dir, da_training_images_dir, evaluation_labels_path, evaluation_images_dir, valid_labels_path, valid_images_dir, itri_dataset):
     train_loader = None
     val_loader = None
     # train dataset
     train_dataset = MultilabelDataset(ann_dir=training_labels_path,
                                 root_dir=training_images_dir,
                                 num_labels=num_classes,
-                                transform=transform, known_labels=1, testing=False, da_root_dir=da_training_images_dir)
+                                transform=transform, known_labels=1, testing=False, da_root_dir=da_training_images_dir, itri=itri_dataset)
     
     if valid_labels_path:
         valid_dataset = MultilabelDataset(ann_dir=valid_labels_path,
                                 root_dir=valid_images_dir,
                                 num_labels=num_classes,
-                                transform=transform4test, known_labels=0, testing=True)
+                                transform=transform4test, known_labels=0, testing=True, itri=itri_dataset)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, prefetch_factor=prefetch_factor, num_workers=num_workers)
         val_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
 
@@ -232,7 +232,7 @@ def get_dataset(num_classes, batch_size, training_labels_path, training_images_d
     test_dataset = MultilabelDataset(ann_dir=evaluation_labels_path,
                                 root_dir=evaluation_images_dir,
                                 num_labels=num_classes,
-                                transform=transform4test, known_labels=0, testing=True)
+                                transform=transform4test, known_labels=0, testing=True, itri=itri_dataset)
 
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, prefetch_factor=prefetch_factor, num_workers=num_workers)
     return train_dataset, test_dataset, test_loader, train_loader, val_loader
@@ -595,6 +595,8 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
         os.makedirs('results/rfmid', exist_ok=True)
     elif dataset_name == 'mured':
         os.makedirs('results/mured', exist_ok=True)
+    elif dataset_name == 'itri':
+        os.makedirs('results/itri', exist_ok=True)
     avg_results = result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores, best_model)
     # print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
     
@@ -638,7 +640,10 @@ def parse_arguments():
 if __name__ == "__main__":
     args = parse_arguments()
     num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index, valid_labels_path, valid_images_dir = dataset2train(args.dataset, args.data_aug)
-    train_dataset, test_dataset, test_loader, train_loader, val_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir, valid_labels_path=valid_labels_path, valid_images_dir=valid_images_dir)
+    if args.dataset == 'itri':
+        train_dataset, test_dataset, test_loader, train_loader, val_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir, valid_labels_path=valid_labels_path, valid_images_dir=valid_images_dir, itri_dataset=True)
+    else:
+        train_dataset, test_dataset, test_loader, train_loader, val_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir, valid_labels_path=valid_labels_path, valid_images_dir=valid_images_dir)
     model = get_model(args.model, args.transformer_layer, num_classes)
     print(f"===== Model: {model.__class__.__name__} =====")
     print(f"<training_labels_path: {training_labels_path}>")

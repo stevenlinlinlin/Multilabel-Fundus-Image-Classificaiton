@@ -6,7 +6,7 @@ from dataloaders.utils import image_loader, get_unk_mask_indices
 
 
 class MultilabelDataset(torch.utils.data.Dataset):
-    def __init__(self, ann_dir,root_dir, num_labels, transform=None,known_labels=0, testing=False, da_root_dir = None):
+    def __init__(self, ann_dir,root_dir, num_labels, transform=None,known_labels=0, testing=False, da_root_dir = None, itri = False):
         # Load training data.
         self.ann_dir = pd.read_csv(ann_dir)
         self.root_dir = root_dir
@@ -17,6 +17,7 @@ class MultilabelDataset(torch.utils.data.Dataset):
         self.testing = testing
         
         self.da_root_dir = da_root_dir
+        self.itri = itri
 
     def __getitem__(self, index):
         # sample = self.annData[index]
@@ -24,11 +25,14 @@ class MultilabelDataset(torch.utils.data.Dataset):
         # image_id = sample['image_id']
 
         # img_path = os.path.join(self.root_dir, str(self.ann_dir.iloc[index, 0])+".png")
-        if str(self.ann_dir.iloc[index, 0]).startswith("DA"):
-            base_path = os.path.join(self.da_root_dir, str(self.ann_dir.iloc[index, 0]))
+        if self.itri:
+            img_path = os.path.join(self.da_root_dir, str(self.ann_dir.iloc[index, 0]))
         else:
-            base_path = os.path.join(self.root_dir, str(self.ann_dir.iloc[index, 0]))
-        img_path = base_path + ".png" if os.path.exists(base_path + ".png") else base_path + ".tif"
+            if str(self.ann_dir.iloc[index, 0]).startswith("DA"):
+                base_path = os.path.join(self.da_root_dir, str(self.ann_dir.iloc[index, 0]))
+            else:
+                base_path = os.path.join(self.root_dir, str(self.ann_dir.iloc[index, 0]))
+            img_path = base_path + ".png" if os.path.exists(base_path + ".png") else base_path + ".tif"
 
         image = image_loader(img_path,self.transform)
         
