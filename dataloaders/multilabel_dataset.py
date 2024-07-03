@@ -32,7 +32,13 @@ class MultilabelDataset(torch.utils.data.Dataset):
                 base_path = os.path.join(self.da_root_dir, str(self.ann_dir.iloc[index, 0]))
             else:
                 base_path = os.path.join(self.root_dir, str(self.ann_dir.iloc[index, 0]))
-            img_path = base_path + ".png" if os.path.exists(base_path + ".png") else base_path + ".tif"
+            # img_path = base_path + ".png" if os.path.exists(base_path + ".png") else base_path + ".tif"
+            if os.path.exists(base_path + ".png"):
+                img_path = base_path + ".png"
+            elif os.path.exists(base_path + ".tif"):
+                img_path = base_path + ".tif"
+            elif os.path.exists(base_path + ".jpg"):
+                img_path = base_path + ".jpg"
 
         image = image_loader(img_path,self.transform)
         

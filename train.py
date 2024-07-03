@@ -13,7 +13,8 @@ from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, average_precision_score, precision_score, recall_score, precision_recall_fscore_support
 from sklearn.model_selection import KFold
 import copy
-from tqdm import tqdm 
+from tqdm import tqdm
+from pathlib import Path
 
 # Custom imports
 from utils import *
@@ -162,6 +163,16 @@ def dataset2train(dataset_name, data_aug=None):
             da_training_images_dir = ''
             valid_labels_path = 'data/val_data.csv'
             valid_images_dir = ''
+        elif dataset_name == 'voc2012':
+            num_classes = 20
+            normal_class_index = 14
+            training_labels_path = 'data/voc2012/train_val_label.csv'
+            evaluation_labels_path = 'data/voc2012/test_label.csv'
+            training_images_dir = 'data/voc2012/VOC2012_train_val/JPEGImages'
+            evaluation_images_dir = 'data/voc2012/VOC2012_test/JPEGImages'
+            da_training_images_dir = ''
+            # valid_labels_path = 'data/val_data.csv'
+            # valid_images_dir = ''
         
     return num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index, valid_labels_path, valid_images_dir
 
@@ -211,7 +222,7 @@ def get_model(model_name, transformer_layer, num_classes):
     return model
 
 # datasets
-def get_dataset(num_classes, batch_size, training_labels_path, training_images_dir, da_training_images_dir, evaluation_labels_path, evaluation_images_dir, valid_labels_path, valid_images_dir, itri_dataset):
+def get_dataset(num_classes, batch_size, training_labels_path, training_images_dir, da_training_images_dir, evaluation_labels_path, evaluation_images_dir, valid_labels_path, valid_images_dir, itri_dataset=False):
     train_loader = None
     val_loader = None
     # train dataset
@@ -240,7 +251,7 @@ def get_dataset(num_classes, batch_size, training_labels_path, training_images_d
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, num_classes, train_dataset, train_loader, val_loader, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
-    num_epochs = 15
+    num_epochs = 1
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
         # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01)
@@ -260,6 +271,13 @@ def train(model, num_classes, train_dataset, train_loader, val_loader, learning_
     elif loss == 'bce':
         print("[BCE Loss]")
         criterion = nn.BCEWithLogitsLoss(reduction='sum')
+    elif loss == 'wbce':
+        print("[Weighted BCE Loss]")
+        # MuReD dataset
+        pos_weights = torch.tensor([3.4545,  3.4658, 12.0667,  7.3602, 13.1120, 13.0000, 12.5692, 23.8451,
+            27.0000, 34.2800, 39.0909, 35.7500, 36.5319, 37.3478, 46.6757, 59.8276,
+            62.0000, 66.8462, 72.5000,  7.4402]).to(device) 
+        criterion = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=pos_weights)
     elif loss == 'poly_ce':
         print("[Poly Loss (bce)]")
         criterion = Poly1CrossEntropyLoss(num_classes, reduction='sum')
@@ -631,6 +649,7 @@ def parse_arguments():
     parser.add_argument('--data_aug', type=str, default=None, help='Data augmentation methods or None')
     parser.add_argument('--plm', action='store_true', help='Partial Label Masking training')
     parser.add_argument('--loss', type=str, default='bce', help='Loss function: bce, focal, asymmetric')
+    parser.add_argument('--save_model', action='store_true', help='Save the model parameters')
     # parser.add_argument('--normal_class', type=int, default=1, help='Normal class index')
     # parser.add_argument('--training_labels_path', type=str)
     args = parser.parse_args()
@@ -656,3 +675,8 @@ if __name__ == "__main__":
     print("******************** Testing ********************")
     evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
     evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)
+    if args.save_model:
+        model_name = Path(args.save_results_path).stem
+        os.makedirs('saved_models', exist_ok=True)
+        torch.save(best_model_state, 'saved_models/' + model_name + '.pt')
+        print(f"###Model saved as saved_models/{model_name}.pt###")

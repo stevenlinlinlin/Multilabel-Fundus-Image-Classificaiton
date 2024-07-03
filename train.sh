@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# VOC2012 dataset with ConvNeXtTransformer
+CUDA_VISIBLE_DEVICES=$1 python train.py \
+    --model "myconvnext_concatGAP" \
+    --save_results_path "results/mured/myconvnext_2layer_concatGAP_voc2012.csv" \
+    --transformer_layer 2 \
+    --val \
+    --weight_decay \
+    --dataset "voc2012" \
+    --warmup \
+    --save_model
+
 # MCAR with ResNet101
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "mcar" \
@@ -13,7 +24,6 @@
 #     --save_results_path "results/mured/ml_decoder.csv" \
 #     --val \
 #     --dataset "mured" \
-#     --warmup
 
 # Query2Label
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
@@ -21,14 +31,12 @@
 #     --save_results_path "results/mured/q2l_swinL.csv" \
 #     --val \
 #     --dataset "mured" \
-#     --warmup
 
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
 #     --model "q2l" \
 #     --save_results_path "results/mured/q2l_CvT.csv" \
 #     --val \
 #     --dataset "mured" \
-#     --warmup
 
 # ADD-GCN
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
@@ -43,7 +51,6 @@
 #     --save_results_path "results/mured/efficientnet-v2_warmup.csv" \
 #     --val \
 #     --dataset "mured" \
-#     --warmup
 
 # MaxViT
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
@@ -51,7 +58,6 @@
 #     --save_results_path "results/mured/maxvit-b_warmup.csv" \
 #     --val \
 #     --dataset "mured" \
-#     --warmup
 
 # CoAtNet
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
@@ -59,7 +65,6 @@
 #     --save_results_path "results/mured/coatnet_warmup.csv" \
 #     --val \
 #     --dataset "mured" \
-#     --warmup
 
 # ViT-L
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
@@ -67,7 +72,6 @@
 #     --save_results_path "results/mured/vit-l_warmup.csv" \
 #     --val \
 #     --dataset "mured" \
-#     --warmup
 
 # Swin-transformer
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
@@ -243,8 +247,9 @@ CUDA_VISIBLE_DEVICES=$1 python train.py \
     --model "densenet" \
     --save_results_path "results/mured/test_1.csv" \
     --val \
-    --dataset "mured"
-    # --loss "asymmetric_loss"
+    --dataset "mured" \
+    --loss "wbce"
+    # --save_model \
 
 # C-Tran
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
