@@ -1,15 +1,26 @@
 #!/bin/bash
 
+# MSCOCO2014 dataset with ConvNeXtTransformer
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "myconvnext_concatGAP" \
+#     --save_results_path "results/mured/myconvnext_2layer_concatGAP_voc2012.csv" \
+#     --transformer_layer 2 \
+#     --val \
+#     --weight_decay \
+#     --dataset "coco2014" \
+#     --warmup \
+#     --batch_size 1
+
 # VOC2012 dataset with ConvNeXtTransformer
-CUDA_VISIBLE_DEVICES=$1 python train.py \
-    --model "myconvnext_concatGAP" \
-    --save_results_path "results/mured/myconvnext_2layer_concatGAP_voc2012.csv" \
-    --transformer_layer 2 \
-    --val \
-    --weight_decay \
-    --dataset "voc2012" \
-    --warmup \
-    --save_model
+# CUDA_VISIBLE_DEVICES=$1 python train.py \
+#     --model "myconvnext_concatGAP" \
+#     --save_results_path "results/mured/myconvnext_2layer_concatGAP_voc2012.csv" \
+#     --transformer_layer 2 \
+#     --val \
+#     --weight_decay \
+#     --dataset "voc2012" \
+#     --warmup \
+#     --save_model
 
 # MCAR with ResNet101
 # CUDA_VISIBLE_DEVICES=$1 python train.py \
@@ -247,8 +258,8 @@ CUDA_VISIBLE_DEVICES=$1 python train.py \
     --model "densenet" \
     --save_results_path "results/mured/test_1.csv" \
     --val \
-    --dataset "mured" \
-    --loss "wbce"
+    --dataset "mured"
+    # --loss "wbce"
     # --save_model \
 
 # C-Tran

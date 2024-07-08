@@ -114,6 +114,10 @@ def results2allcsv(results_path, all_results, avg_results, dataset_name, overall
         csv_file_path = 'results/all_models_results_rfmid.csv'
     elif dataset_name == 'itri':
         csv_file_path = 'results/all_models_results_itri.csv'
+    elif dataset_name == 'voc2012':
+        csv_file_path = 'results/all_models_results_voc2012.csv'
+    elif dataset_name == 'coco2014':
+        csv_file_path = 'results/all_models_results_coco2014.csv'
         
     if best_model:
         csv_file_path = csv_file_path.replace('.csv', '_best.csv')

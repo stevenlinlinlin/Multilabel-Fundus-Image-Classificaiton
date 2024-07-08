@@ -165,11 +165,21 @@ def dataset2train(dataset_name, data_aug=None):
             valid_images_dir = ''
         elif dataset_name == 'voc2012':
             num_classes = 20
-            normal_class_index = 14
+            normal_class_index = 14 #### voc2012 xxxxx
             training_labels_path = 'data/voc2012/train_val_label.csv'
             evaluation_labels_path = 'data/voc2012/test_label.csv'
             training_images_dir = 'data/voc2012/VOC2012_train_val/JPEGImages'
             evaluation_images_dir = 'data/voc2012/VOC2012_test/JPEGImages'
+            da_training_images_dir = ''
+            # valid_labels_path = 'data/val_data.csv'
+            # valid_images_dir = ''
+        elif dataset_name == 'coco2014':
+            num_classes = 80
+            normal_class_index = 14 #### coco2014 xxxxx
+            training_labels_path = './data/mscoco2014/train_mscoco2014.csv'
+            evaluation_labels_path = 'data/mscoco2014/val_mscoco2014.csv'
+            training_images_dir = './data/mscoco2014/train2014'
+            evaluation_images_dir = './data/mscoco2014/val2014'
             da_training_images_dir = ''
             # valid_labels_path = 'data/val_data.csv'
             # valid_images_dir = ''
@@ -251,7 +261,7 @@ def get_dataset(num_classes, batch_size, training_labels_path, training_images_d
 
 # trainset to train and validation (0.8, 0.2)   
 def train(model, num_classes, train_dataset, train_loader, val_loader, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
-    num_epochs = 1
+    num_epochs = 15
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
         # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.01)
@@ -485,7 +495,7 @@ def train(model, num_classes, train_dataset, train_loader, val_loader, learning_
         f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
         
         print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}')
-    return best_model_state
+    return best_model_state, val_loader
 
 
 # Evaluate the model on the test set
@@ -615,6 +625,10 @@ def evaluate(model, best_model_state, test_loader, results_path, evaluation_labe
         os.makedirs('results/mured', exist_ok=True)
     elif dataset_name == 'itri':
         os.makedirs('results/itri', exist_ok=True)
+    elif dataset_name == 'voc2012':
+        os.makedirs('results/voc2012', exist_ok=True)
+    elif dataset_name == 'coco2014':
+        os.makedirs('results/coco2014', exist_ok=True)
     avg_results = result2csv(results_path, evaluation_labels_path, precision_scores, recall_scores, f1_list, mAP_per_label, auc_scores, best_model)
     # print(f'Evaluation - Average Precision: {average_precision:.3f}, Average Recall: {average_recall:.3f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}, ML Scores: {(mAP + average_auc) / 2:.3f}')
     
@@ -670,11 +684,14 @@ if __name__ == "__main__":
     if args.plm:
         best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=args.batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device, loss=args.loss)
     else:
-        best_model_state = train(model, num_classes, train_dataset, train_loader, val_loader, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
+        best_model_state, val_loader = train(model, num_classes, train_dataset, train_loader, val_loader, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
     # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
     print("******************** Testing ********************")
-    evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
-    evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)
+    if args.dataset == 'voc2012' or args.dataset == 'coco2014':
+        evaluate(model, best_model_state, val_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)
+    else:
+        evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
+        evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)
     if args.save_model:
         model_name = Path(args.save_results_path).stem
         os.makedirs('saved_models', exist_ok=True)

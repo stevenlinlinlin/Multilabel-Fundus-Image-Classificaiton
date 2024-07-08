@@ -39,6 +39,9 @@ class MultilabelDataset(torch.utils.data.Dataset):
                 img_path = base_path + ".tif"
             elif os.path.exists(base_path + ".jpg"):
                 img_path = base_path + ".jpg"
+            else: # MS COCO
+                base_path = os.path.join(self.root_dir, f'COCO_train2014_{self.ann_dir.iloc[index, 0]:012d}')
+                img_path = base_path + ".jpg"
 
         image = image_loader(img_path,self.transform)
         
