@@ -284,9 +284,9 @@ def train(model, num_classes, train_dataset, train_loader, val_loader, learning_
     elif loss == 'wbce':
         print("[Weighted BCE Loss]")
         # MuReD dataset
-        pos_weights = torch.tensor([3.4545,  3.4658, 12.0667,  7.3602, 13.1120, 13.0000, 12.5692, 23.8451,
-            27.0000, 34.2800, 39.0909, 35.7500, 36.5319, 37.3478, 46.6757, 59.8276,
-            62.0000, 66.8462, 72.5000,  7.4402]).to(device) 
+        pos_weights = torch.tensor([3.7728,  4.4253, 13.9860,  8.0422, 15.2348, 12.6497, 13.8819, 26.1266,
+        26.1266, 26.1266, 26.1266, 26.1266, 26.1266, 26.1266, 24.5119, 24.8193,
+        24.5119, 20.2178, 26.1266,  8.1974]).to(device) 
         criterion = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=pos_weights)
     elif loss == 'poly_ce':
         print("[Poly Loss (bce)]")
