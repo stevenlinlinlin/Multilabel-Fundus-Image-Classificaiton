@@ -59,4 +59,5 @@ CUDA_VISIBLE_DEVICES=$1 python train.py \
     --weight_decay \
     --dataset "mured" \
     --data_aug "ros02" \
-    --warmup
+    --warmup \
+    --save_model
