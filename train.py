@@ -192,8 +192,8 @@ def get_model(model_name, transformer_layer, num_classes):
     if model_name == 'resnet':
         model = ResNet152(num_classes).to(device)
     elif model_name == 'densenet':
-        model = DenseNet121(num_classes).to(device)
-        # model = DenseNet161(num_classes).to(device)
+        # model = DenseNet121(num_classes).to(device)
+        model = DenseNet161(num_classes).to(device)
     elif model_name == 'mobilenet':
         model = MobileNetV2(num_classes).to(device)
     elif model_name == 'efficientnet':
