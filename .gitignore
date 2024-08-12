@@ -6,3 +6,5 @@
 *.pyc
 *.pth
 /saved_models/
+/checkpoints/
+test.sh

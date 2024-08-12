@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-import math
+import sys
 import torch
 import torchvision.models as models
 import torch.nn as nn
@@ -259,8 +259,30 @@ def get_dataset(num_classes, batch_size, training_labels_path, training_images_d
     return train_dataset, test_dataset, test_loader, train_loader, val_loader
 
 
+def checkpoint_exists(checkpoint_path, start_epoch, model, optimizer, warmup, warmup_scheduler, step_scheduler):
+    try:
+        checkpoint = torch.load(checkpoint_path)        
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        best_train_loss = checkpoint['best_train_loss']
+        best_val_loss = checkpoint['best_val_loss']
+        best_model_state = checkpoint['best_model_state']
+        if warmup:
+            warmup_scheduler.load_state_dict(checkpoint['warmup_scheduler_state_dict'])
+        step_scheduler.load_state_dict(checkpoint['step_scheduler_state_dict'])
+        print(f"(checkpoint exist, training from epoch {start_epoch})")
+        return start_epoch, best_train_loss, best_val_loss, best_model_state, model, optimizer, warmup_scheduler, step_scheduler
+    except FileNotFoundError:
+        print("(No checkpoint found, training from epoch 0)")
+        best_train_loss = float('inf')
+        best_val_loss = float('inf')
+        best_model_state = None
+        return start_epoch, best_train_loss, best_val_loss, best_model_state, model, optimizer, warmup_scheduler, step_scheduler
+
+
 # trainset to train and validation (0.8, 0.2)   
-def train(model, num_classes, train_dataset, train_loader, val_loader, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
+def train(checkpoint_path, model, num_classes, train_dataset, train_loader, val_loader, learning_rate, batch_size, ctran_model=False, evaluation=False, weight_decay=False, warmup=False, loss='bce'):
     num_epochs = 15
     if weight_decay:
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
@@ -295,6 +317,7 @@ def train(model, num_classes, train_dataset, train_loader, val_loader, learning_
         print("[Poly Loss (Focal)]")
         criterion = Poly1FocalLoss(num_classes, reduction='sum')
     
+    warmup_scheduler = None
     if warmup:
         num_epochs += 5
         warmup_scheduler = LambdaLR(optimizer, lr_lambda=linear_warmup)
@@ -325,10 +348,10 @@ def train(model, num_classes, train_dataset, train_loader, val_loader, learning_
     else:
         evaluation = True
 
-    best_train_loss = float('inf')
-    best_val_loss = float('inf')
-    best_model_state = None
-    for epoch in tqdm(range(num_epochs), desc='Epoch'):
+    start_epoch = 0
+    start_epoch, best_train_loss, best_val_loss, best_model_state, model, optimizer, warmup_scheduler, step_scheduler = checkpoint_exists(checkpoint_path, start_epoch, model, optimizer, warmup, warmup_scheduler, step_scheduler)
+    
+    for epoch in tqdm(range(start_epoch, num_epochs), desc='Epoch'):
         model.train()
         train_loss = 0.0
         for batch in train_loader:
@@ -377,6 +400,19 @@ def train(model, num_classes, train_dataset, train_loader, val_loader, learning_
         else:
             step_scheduler.step()
             # print(step_scheduler.get_last_lr())
+        
+        # Save the model checkpoint
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'warmup_scheduler_state_dict': warmup_scheduler.state_dict() if warmup_scheduler else None,
+            'step_scheduler_state_dict': step_scheduler.state_dict(),
+            'loss': train_loss,
+            'best_train_loss': best_train_loss,
+            'best_val_loss': best_val_loss,
+            'best_model_state': best_model_state,
+        }, checkpoint_path)
 
         if not evaluation:
             current_train_loss = train_loss / len(train_loader)
@@ -672,28 +708,39 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index, valid_labels_path, valid_images_dir = dataset2train(args.dataset, args.data_aug)
-    if args.dataset == 'itri':
-        train_dataset, test_dataset, test_loader, train_loader, val_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir, valid_labels_path=valid_labels_path, valid_images_dir=valid_images_dir, itri_dataset=True)
+    if not os.path.exists(args.save_results_path):
+        num_classes, training_labels_path, evaluation_labels_path, training_images_dir, evaluation_images_dir, da_training_images_dir, normal_class_index, valid_labels_path, valid_images_dir = dataset2train(args.dataset, args.data_aug)
+        if args.dataset == 'itri':
+            train_dataset, test_dataset, test_loader, train_loader, val_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir, valid_labels_path=valid_labels_path, valid_images_dir=valid_images_dir, itri_dataset=True)
+        else:
+            train_dataset, test_dataset, test_loader, train_loader, val_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir, valid_labels_path=valid_labels_path, valid_images_dir=valid_images_dir)
+        model = get_model(args.model, args.transformer_layer, num_classes)
+        
+        os.makedirs('checkpoints', exist_ok=True)
+        checkpoint_path = './checkpoints/model_checkpoint.pth'
+        
+        print(f"===== Model: {model.__class__.__name__} =====")
+        print(f"<training_labels_path: {training_labels_path}>")
+        print("******************** Training   ********************")
+        if args.plm:
+            best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=args.batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device, loss=args.loss)
+        else:
+            best_model_state, val_loader = train(checkpoint_path, model, num_classes, train_dataset, train_loader, val_loader, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
+        # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
+        print("******************** Testing ********************")
+        if args.dataset == 'voc2012' or args.dataset == 'coco2014':
+            evaluate(model, best_model_state, val_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)
+        else:
+            evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
+            evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)
+        if args.save_model:
+            model_name = Path(args.save_results_path).stem
+            os.makedirs('saved_models', exist_ok=True)
+            torch.save(best_model_state, 'saved_models/' + model_name + '.pt')
+            print(f"###Model saved as saved_models/{model_name}.pt###")
+            
+        if os.path.exists(checkpoint_path):
+            os.remove(checkpoint_path)
     else:
-        train_dataset, test_dataset, test_loader, train_loader, val_loader = get_dataset(num_classes=num_classes, batch_size=args.batch_size, training_labels_path=training_labels_path, training_images_dir=training_images_dir, da_training_images_dir=da_training_images_dir, evaluation_labels_path=evaluation_labels_path, evaluation_images_dir=evaluation_images_dir, valid_labels_path=valid_labels_path, valid_images_dir=valid_images_dir)
-    model = get_model(args.model, args.transformer_layer, num_classes)
-    print(f"===== Model: {model.__class__.__name__} =====")
-    print(f"<training_labels_path: {training_labels_path}>")
-    print("******************** Training   ********************")
-    if args.plm:
-        best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=args.batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device, loss=args.loss)
-    else:
-        best_model_state, val_loader = train(model, num_classes, train_dataset, train_loader, val_loader, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
-    # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
-    print("******************** Testing ********************")
-    if args.dataset == 'voc2012' or args.dataset == 'coco2014':
-        evaluate(model, best_model_state, val_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)
-    else:
-        evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model)
-        evaluate(model, best_model_state, test_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)
-    if args.save_model:
-        model_name = Path(args.save_results_path).stem
-        os.makedirs('saved_models', exist_ok=True)
-        torch.save(best_model_state, 'saved_models/' + model_name + '.pt')
-        print(f"###Model saved as saved_models/{model_name}.pt###")
+        print(f"Model evaluation results already exist in {args.save_results_path}")
+        sys.exit(1)
