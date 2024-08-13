@@ -137,6 +137,31 @@ def results2allcsv(results_path, all_results, avg_results, dataset_name, overall
         writer.writerow(result_with_name)
         
     print(f"[Evaluation all results has been written to *{csv_file_path}*]")
+    
+def save_epoch_loss(train_losses,save_results_path, dataset_name):
+    if dataset_name == 'rfmid':
+        os.makedirs('results/rfmid_loss', exist_ok=True)
+        loss_path = save_results_path.replace('/rfmid/', '/rfmid_loss/')
+    elif dataset_name == 'mured':
+        os.makedirs('results/mured_loss', exist_ok=True)
+        loss_path = save_results_path.replace('/mured/', '/mured_loss/')
+    elif dataset_name == 'itri':
+        os.makedirs('results/itri_loss', exist_ok=True)
+        loss_path = save_results_path.replace('/itri/', '/itri_loss/')
+    elif dataset_name == 'voc2012':
+        os.makedirs('results/voc2012_loss', exist_ok=True)
+        loss_path = save_results_path.replace('/voc2012/', '/voc2012_loss/')
+    elif dataset_name == 'coco2014':
+        os.makedirs('results/coco2014_loss', exist_ok=True)
+        loss_path = save_results_path.replace('/coco2014/', '/coco2014_loss/')
+        
+    with open(loss_path, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Epoch', 'Train_Loss'])
+        for epoch in range(1, len(train_losses) + 1):
+            writer.writerow([epoch, train_losses[epoch-1]])
+    print(f"Loss data saved to {loss_path}")
+    
 
 def linear_warmup(epoch):
     if epoch < 5:

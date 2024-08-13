@@ -268,17 +268,19 @@ def checkpoint_exists(checkpoint_path, start_epoch, model, optimizer, warmup, wa
         best_train_loss = checkpoint['best_train_loss']
         best_val_loss = checkpoint['best_val_loss']
         best_model_state = checkpoint['best_model_state']
+        train_losses = checkpoint['loss']
         if warmup:
             warmup_scheduler.load_state_dict(checkpoint['warmup_scheduler_state_dict'])
         step_scheduler.load_state_dict(checkpoint['step_scheduler_state_dict'])
         print(f"(checkpoint exist, training from epoch {start_epoch})")
-        return start_epoch, best_train_loss, best_val_loss, best_model_state, model, optimizer, warmup_scheduler, step_scheduler
+        return start_epoch, best_train_loss, best_val_loss, best_model_state, model, optimizer, warmup_scheduler, step_scheduler, train_losses
     except FileNotFoundError:
         print("(No checkpoint found, training from epoch 0)")
         best_train_loss = float('inf')
         best_val_loss = float('inf')
         best_model_state = None
-        return start_epoch, best_train_loss, best_val_loss, best_model_state, model, optimizer, warmup_scheduler, step_scheduler
+        train_losses = []
+        return start_epoch, best_train_loss, best_val_loss, best_model_state, model, optimizer, warmup_scheduler, step_scheduler, train_losses
 
 
 # trainset to train and validation (0.8, 0.2)   
@@ -349,7 +351,7 @@ def train(checkpoint_path, model, num_classes, train_dataset, train_loader, val_
         evaluation = True
 
     start_epoch = 0
-    start_epoch, best_train_loss, best_val_loss, best_model_state, model, optimizer, warmup_scheduler, step_scheduler = checkpoint_exists(checkpoint_path, start_epoch, model, optimizer, warmup, warmup_scheduler, step_scheduler)
+    start_epoch, best_train_loss, best_val_loss, best_model_state, model, optimizer, warmup_scheduler, step_scheduler, train_losses = checkpoint_exists(checkpoint_path, start_epoch, model, optimizer, warmup, warmup_scheduler, step_scheduler)
     
     for epoch in tqdm(range(start_epoch, num_epochs), desc='Epoch'):
         model.train()
@@ -388,6 +390,7 @@ def train(checkpoint_path, model, num_classes, train_dataset, train_loader, val_
             train_loss += loss_out.item()
             loss_out.backward()
             optimizer.step()
+        train_losses.append(train_loss/len(train_loader))
             
         # scheduler.step()
         if epoch < 5:
@@ -408,7 +411,7 @@ def train(checkpoint_path, model, num_classes, train_dataset, train_loader, val_
             'optimizer_state_dict': optimizer.state_dict(),
             'warmup_scheduler_state_dict': warmup_scheduler.state_dict() if warmup_scheduler else None,
             'step_scheduler_state_dict': step_scheduler.state_dict(),
-            'loss': train_loss,
+            'loss': train_losses,
             'best_train_loss': best_train_loss,
             'best_val_loss': best_val_loss,
             'best_model_state': best_model_state,
@@ -531,7 +534,7 @@ def train(checkpoint_path, model, num_classes, train_dataset, train_loader, val_
         f1_macro = f1_score(all_labels_5, all_preds_5, average='macro')
         
         print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss/len(train_loader):.6f}, Validation Loss: {val_loss/len(val_loader):.6f}, F1_macro: {f1_macro:.3f}, mAP: {mAP:.3f}, Average AUC: {average_auc:.3f}')
-    return best_model_state, val_loader
+    return best_model_state, val_loader, train_losses
 
 
 # Evaluate the model on the test set
@@ -725,8 +728,9 @@ if __name__ == "__main__":
         if args.plm:
             best_model_state = train_plm(model, train_dataset, args.lr, ctran_model=args.ctran_model, warmup=args.warmup, evaluation=args.val, num_classes=num_classes, batch_size=args.batch_size, prefetch_factor=prefetch_factor, num_workers=num_workers, device=device, loss=args.loss)
         else:
-            best_model_state, val_loader = train(checkpoint_path, model, num_classes, train_dataset, train_loader, val_loader, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
+            best_model_state, val_loader, train_losses = train(checkpoint_path, model, num_classes, train_dataset, train_loader, val_loader, args.lr, batch_size=args.batch_size, ctran_model=args.ctran_model, evaluation=args.val, weight_decay=args.weight_decay, warmup=args.warmup, loss=args.loss)
         # best_model_state = train_kfold(model, train_dataset, args.lr, ctran_model=args.ctran_model)
+        save_epoch_loss(train_losses, args.save_results_path, args.dataset)
         print("******************** Testing ********************")
         if args.dataset == 'voc2012' or args.dataset == 'coco2014':
             evaluate(model, best_model_state, val_loader, args.save_results_path, evaluation_labels_path, args.dataset, normal_index=normal_class_index, ctran_model=args.ctran_model, best_model =True)
